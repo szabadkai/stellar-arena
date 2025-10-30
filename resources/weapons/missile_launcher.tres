@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://bcd11qx0q2by"]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon_data.gd" id="1_weapon_data"]
+
+[resource]
+script = ExtResource("1_weapon_data")
+weapon_name = "Missile Launcher"
+description = "Explosive missile weapon. Area damage, limited ammo, doesn't require line of sight."
+damage_type = "Missile"
+base_damage = 12
+accuracy = 90
+armor_penetration = 4
+shield_modifier = 1.0
+min_range = 3
+max_range = 8
+line_of_sight_required = false
+aoe_radius = 1
+ap_cost = 2
+energy_cost = 1
+cooldown_turns = 1
+has_ammo = true
+max_ammo = 6
+ammo_per_shot = 1
+can_overload = false
+overload_damage_bonus = 0
+overload_energy_cost = 0
+projectile_color = Color(1, 0.5, 0, 1)
+projectile_speed = 15.0
+muzzle_flash_color = Color(1, 0.8, 0, 1)
+impact_color = Color(1, 0.3, 0, 1)
+sound_fire = ""
+sound_impact = ""
+credit_cost = 80
+scrap_cost = 5
+rarity = 2

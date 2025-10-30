@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://c3m7n4k8qxqat"]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon_data.gd" id="1_weapon_data"]
+
+[resource]
+script = ExtResource("1_weapon_data")
+weapon_name = "Railgun"
+description = "Heavy kinetic weapon. High damage, penetrates armor, but requires significant energy."
+damage_type = "Kinetic"
+base_damage = 15
+accuracy = 75
+armor_penetration = 8
+shield_modifier = 0.8
+min_range = 2
+max_range = 7
+line_of_sight_required = true
+aoe_radius = 0
+ap_cost = 3
+energy_cost = 5
+cooldown_turns = 0
+has_ammo = false
+max_ammo = 0
+ammo_per_shot = 1
+can_overload = false
+overload_damage_bonus = 0
+overload_energy_cost = 0
+projectile_color = Color(0.7, 0.7, 1, 1)
+projectile_speed = 50.0
+muzzle_flash_color = Color(0.5, 0.5, 1, 1)
+impact_color = Color(1, 1, 1, 1)
+sound_fire = ""
+sound_impact = ""
+credit_cost = 100
+scrap_cost = 10
+rarity = 2

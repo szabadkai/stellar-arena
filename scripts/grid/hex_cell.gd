@@ -59,13 +59,15 @@ func initialize(coords: Vector2i, hex_size: float = 1.0) -> void:
 	position = world_position
 
 	# Create hexagonal mesh if not already present
-	if not mesh_instance:
+	if not mesh_instance or not mesh_instance.mesh:
 		create_hex_mesh(hex_size)
 
 ## Create a hexagonal mesh for this cell
 func create_hex_mesh(hex_size: float) -> void:
-	mesh_instance = MeshInstance3D.new()
-	add_child(mesh_instance)
+	# Use existing mesh_instance if available, otherwise create new one
+	if not mesh_instance:
+		mesh_instance = MeshInstance3D.new()
+		add_child(mesh_instance)
 
 	# Create hexagon mesh
 	var surface_array := []
@@ -116,22 +118,39 @@ func create_hex_mesh(hex_size: float) -> void:
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh_instance.set_surface_override_material(0, material)
 
-	# Create collision area for mouse interaction
-	collision_area = Area3D.new()
-	add_child(collision_area)
+	# Create collision area for mouse interaction if not exists
+	if not collision_area:
+		collision_area = Area3D.new()
+		add_child(collision_area)
 
-	var collision_shape := CollisionShape3D.new()
+	# Get or create collision shape
+	var collision_shape: CollisionShape3D
+	if collision_area.get_child_count() > 0:
+		collision_shape = collision_area.get_child(0) as CollisionShape3D
+
+	if not collision_shape:
+		collision_shape = CollisionShape3D.new()
+		collision_area.add_child(collision_shape)
+
+	# Set up the shape
 	var shape := CylinderShape3D.new()
 	shape.radius = radius
 	shape.height = 0.1
 	collision_shape.shape = shape
 	collision_shape.position = Vector3(0, 0.05, 0)
-	collision_area.add_child(collision_shape)
 
 	# Set up collision layers
-	collision_area.collision_layer = 0
-	collision_area.collision_mask = 0
+	collision_area.collision_layer = 1  # Enable layer 1 so it can be clicked
+	collision_area.collision_mask = 0   # Don't need to detect other objects
 	collision_area.input_ray_pickable = true
+
+	# Connect signals for mouse interaction (do it here since collision_area is just created)
+	if not collision_area.input_event.is_connected(_on_area_input_event):
+		collision_area.input_event.connect(_on_area_input_event)
+	if not collision_area.mouse_entered.is_connected(_on_mouse_entered):
+		collision_area.mouse_entered.connect(_on_mouse_entered)
+	if not collision_area.mouse_exited.is_connected(_on_mouse_exited):
+		collision_area.mouse_exited.connect(_on_mouse_exited)
 
 ## Set visual state
 func set_state(new_state: CellState) -> void:
@@ -140,10 +159,10 @@ func set_state(new_state: CellState) -> void:
 
 ## Update visual appearance based on current state
 func update_visual() -> void:
-	if not mesh_instance:
+	if not mesh_instance or not mesh_instance.mesh:
 		return
 
-	var material := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
+	var material: StandardMaterial3D = mesh_instance.get_surface_override_material(0) as StandardMaterial3D
 	if not material:
 		return
 
@@ -191,6 +210,7 @@ func is_adjacent_to(other: HexCell) -> int:
 func _on_area_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape: int) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			print("HexCell clicked: ", axial_coords)
 			cell_clicked.emit(self)
 
 func _on_mouse_entered() -> void:

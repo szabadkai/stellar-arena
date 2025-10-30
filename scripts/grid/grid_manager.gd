@@ -78,7 +78,7 @@ func clear_grid() -> void:
 
 ## Get cell at axial coordinates
 func get_cell(axial: Vector2i) -> HexCell:
-	return cells.get(axial)
+	return cells.get(axial) as HexCell
 
 ## Get cell at world position
 func get_cell_at_world(world_pos: Vector3) -> HexCell:
@@ -95,19 +95,19 @@ func get_neighbors(cell: HexCell) -> Array[HexCell]:
 	var neighbor_coords := HexMath.get_neighbors(cell.axial_coords)
 
 	for coord in neighbor_coords:
-		var neighbor := get_cell(coord)
+		var neighbor: HexCell = get_cell(coord)
 		if neighbor:
 			neighbors.append(neighbor)
 
 	return neighbors
 
 ## Get all cells within range of a cell
-func get_cells_in_range(center: HexCell, range: int) -> Array[HexCell]:
+func get_cells_in_range(center: HexCell, radius: int) -> Array[HexCell]:
 	var result: Array[HexCell] = []
-	var coords := HexMath.get_hexes_in_range(center.axial_coords, range)
+	var coords := HexMath.get_hexes_in_range(center.axial_coords, radius)
 
 	for coord in coords:
-		var cell := get_cell(coord)
+		var cell: HexCell = get_cell(coord)
 		if cell:
 			result.append(cell)
 
@@ -119,7 +119,7 @@ func get_line_of_cells(from: HexCell, to: HexCell) -> Array[HexCell]:
 	var coords := HexMath.hex_line(from.axial_coords, to.axial_coords)
 
 	for coord in coords:
-		var cell := get_cell(coord)
+		var cell: HexCell = get_cell(coord)
 		if cell:
 			result.append(cell)
 
@@ -127,7 +127,7 @@ func get_line_of_cells(from: HexCell, to: HexCell) -> Array[HexCell]:
 
 ## Check line of sight between two cells
 func has_line_of_sight(from: HexCell, to: HexCell) -> bool:
-	var line := get_line_of_cells(from, to)
+	var line: Array[HexCell] = get_line_of_cells(from, to)
 
 	# Check if any cell in between is blocked (excluding start and end)
 	for i in range(1, line.size() - 1):

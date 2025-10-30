@@ -64,13 +64,13 @@ static func axial_round(axial: Vector2) -> Vector2i:
 	var r := axial.y
 	var s := -q - r
 
-	var rq := round(q)
-	var rr := round(r)
-	var rs := round(s)
+	var rq: float = round(q)
+	var rr: float = round(r)
+	var rs: float = round(s)
 
-	var q_diff := abs(rq - q)
-	var r_diff := abs(rr - r)
-	var s_diff := abs(rs - s)
+	var q_diff: float = abs(rq - q)
+	var r_diff: float = abs(rr - r)
+	var s_diff: float = abs(rs - s)
 
 	# Reset the component with the largest difference
 	if q_diff > r_diff and q_diff > s_diff:
@@ -100,11 +100,11 @@ static func get_neighbor(axial: Vector2i, direction: int) -> Vector2i:
 	return axial + AXIAL_DIRECTIONS[direction % 6]
 
 ## Get all hexes within a certain range
-static func get_hexes_in_range(center: Vector2i, range: int) -> Array[Vector2i]:
+static func get_hexes_in_range(center: Vector2i, radius: int) -> Array[Vector2i]:
 	var results: Array[Vector2i] = []
-	for q in range(-range, range + 1):
-		var r1 := max(-range, -q - range)
-		var r2 := min(range, -q + range)
+	for q in range(-radius, radius + 1):
+		var r1: int = maxi(-radius, -q - radius)
+		var r2: int = mini(radius, -q + radius)
 		for r in range(r1, r2 + 1):
 			results.append(center + Vector2i(q, r))
 	return results
@@ -116,7 +116,7 @@ static func get_hex_ring(center: Vector2i, radius: int) -> Array[Vector2i]:
 		results.append(center)
 		return results
 
-	var hex := center + AXIAL_DIRECTIONS[4] * radius
+	var hex: Vector2i = center + AXIAL_DIRECTIONS[4] * radius
 	for i in 6:
 		for _j in radius:
 			results.append(hex)

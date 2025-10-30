@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CrewMember" load_steps=2 format=3 uid="uid://d7725ns5q2dy"]
+
+[ext_resource type="Script" path="res://scripts/crew/crew_member.gd" id="1_crew"]
+
+[resource]
+script = ExtResource("1_crew")
+crew_name = "Sarah \"Bullseye\" Chen"
+background = "Expert marksman with uncanny accuracy. Former military sharpshooter turned mercenary."
+portrait_path = ""
+role = "Gunner"
+skill_level = 4
+accuracy_bonus = 20
+evasion_bonus = 0
+initiative_bonus = 5
+damage_bonus = 3
+repair_bonus = 0
+movement_bonus = 0
+energy_regen_bonus = 0
+ap_bonus = 0
+has_ability = true
+ability_name = "Target Analysis"
+ability_description = "Analyze enemy weak points, increasing weapon accuracy by 30% for 2 turns."
+ability_ap_cost = 1
+ability_energy_cost = 2
+ability_cooldown = 3
+current_cooldown = 0
+is_injured = false
+credit_cost = 200
+rarity = "Uncommon"
