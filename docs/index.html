@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Arena - Web Edition</title>
+    <link rel="icon" type="image/svg+xml" href="/stellar-arena/assets/favicon-DHtxF5nM.svg">
+  <script type="module" crossorigin src="/stellar-arena/assets/index-CBXo-y9j.js"></script>
+  <link rel="stylesheet" crossorigin href="/stellar-arena/assets/index-Db0g60RC.css">
+</head>
+<body>
+    <!-- Main Menu Screen -->
+    <div id="main-menu" class="screen active">
+        <div class="menu-content">
+            <h1 class="game-title">STELLAR ARENA</h1>
+            <div class="menu-buttons">
+                <button id="new-campaign-btn" class="menu-btn">New Campaign</button>
+                <button id="continue-btn" class="menu-btn" disabled>Continue</button>
+                <button id="unlocks-btn" class="menu-btn">Unlocks</button>
+            </div>
+            <div class="version">v0.1.0 Alpha</div>
+        </div>
+    </div>
+
+    <!-- Shipyard Screen -->
+    <div id="shipyard-screen" class="screen">
+        <div class="shipyard-content">
+            <h2>Shipyard</h2>
+            <div class="campaign-info">
+                <div class="stat">Credits: <span id="credits-display">1000</span></div>
+                <div class="stat">Battle: <span id="battle-number">1</span>/5</div>
+            </div>
+            <div id="available-ships">
+                <div id="ship-selection"></div>
+            </div>
+            <div class="shipyard-actions">
+                <button id="launch-battle-btn" class="action-btn">Launch Battle</button>
+                <button id="back-to-menu-btn" class="action-btn secondary">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Battle Screen (existing game) -->
+    <div id="battle-screen" class="screen">
+        <div id="game-container">
+        <div id="hud">
+            <div id="turn-info">
+                <h2>Turn: <span id="turn-number">1</span></h2>
+                <div id="active-ship-info">
+                    <h3 id="ship-name">Select a ship</h3>
+                    <div class="stats">
+                        <div class="stat-bar">
+                            <label>Hull:</label>
+                            <div class="bar"><div id="hull-bar" class="fill hull"></div></div>
+                            <span id="hull-text">100/100</span>
+                        </div>
+                        <div class="stat-bar">
+                            <label>Shield:</label>
+                            <div class="bar"><div id="shield-bar" class="fill shield"></div></div>
+                            <span id="shield-text">50/50</span>
+                        </div>
+                        <div class="stat-bar">
+                            <label>Energy:</label>
+                            <div class="bar"><div id="energy-bar" class="fill energy"></div></div>
+                            <span id="energy-text">100/100</span>
+                        </div>
+                        <div class="stat-bar">
+                            <label>AP:</label>
+                            <span id="ap-text">3/3</span>
+                        </div>
+                    </div>
+                    <div id="energy-allocation">
+                        <h4>Energy Allocation (1 AP to change)</h4>
+                        <div class="slider-group">
+                            <label>Weapons: <span id="weapons-alloc">3</span> pts</label>
+                            <input type="range" id="weapons-slider" min="0" max="10" value="3">
+                        </div>
+                        <div class="slider-group">
+                            <label>Shields: <span id="shields-alloc">3</span> pts</label>
+                            <input type="range" id="shields-slider" min="0" max="10" value="3">
+                        </div>
+                        <div class="slider-group">
+                            <label>Engines: <span id="engines-alloc">4</span> pts</label>
+                            <input type="range" id="engines-slider" min="0" max="10" value="4">
+                        </div>
+                    </div>
+                    <div id="weapon-select">
+                        <h4>Weapons</h4>
+                        <div id="weapon-buttons"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="initiative-queue">
+                <h3>Initiative Order</h3>
+                <div id="queue-list"></div>
+            </div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+        <div id="controls">
+            <button id="end-turn-btn">End Turn</button>
+            <button id="reset-btn">Reset Game</button>
+        </div>
+        <div id="message-container"></div>
+
+        <!-- Combat Log -->
+        <div id="combat-log" class="combat-log collapsed">
+            <div class="combat-log-header">
+                <h3>Combat Log</h3>
+                <button id="combat-log-toggle" class="log-toggle-btn">▼</button>
+            </div>
+            <div class="combat-log-content">
+                <div id="combat-log-entries"></div>
+                <button id="combat-log-clear" class="log-clear-btn">Clear Log</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Post-Battle Screen -->
+    <div id="post-battle-screen" class="screen">
+        <div class="post-battle-content">
+            <h2 id="battle-result">Victory!</h2>
+            <div class="rewards">
+                <h3>Rewards</h3>
+                <div id="rewards-list"></div>
+            </div>
+            <div class="ship-status">
+                <h3>Fleet Status</h3>
+                <div id="fleet-status"></div>
+            </div>
+            <div class="post-battle-actions">
+                <button id="continue-campaign-btn" class="action-btn">Continue Campaign</button>
+                <button id="abandon-campaign-btn" class="action-btn secondary">Abandon</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade Selection Screen -->
+    <div id="upgrade-screen" class="screen">
+        <div class="upgrade-content">
+            <h2>Choose Upgrades</h2>
+            <p class="upgrade-subtitle">Select one upgrade for each surviving ship</p>
+            <div id="upgrade-ships"></div>
+            <div class="upgrade-actions">
+                <button id="finish-upgrades-btn" class="action-btn">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="tutorial-overlay" style="display: none;">
+        <div class="tutorial-content">
+            <h2>Welcome to Stellar Arena!</h2>
+            <div class="tutorial-section">
+                <h3>🎮 How to Play</h3>
+                <ul>
+                    <li><strong>Turns:</strong> Ships act based on initiative order (shown in sidebar)</li>
+                    <li><strong>Movement:</strong> Click a hex to move your ship (costs AP)</li>
+                    <li><strong>Combat:</strong> Select a weapon, then click an enemy to attack</li>
+                    <li><strong>Energy:</strong> Allocate reactor power between weapons, shields, and engines</li>
+                </ul>
+            </div>
+            <div class="tutorial-section">
+                <h3>⚡ Energy Management</h3>
+                <p>Allocate 10 reactor points between systems (costs 1 AP to change):</p>
+                <ul>
+                    <li><strong>Weapons:</strong> More damage output</li>
+                    <li><strong>Shields:</strong> Better defense and recharge</li>
+                    <li><strong>Engines:</strong> Lower movement cost, better maneuverability</li>
+                </ul>
+            </div>
+            <div class="tutorial-section">
+                <h3>🎯 Weapon Info</h3>
+                <p>Weapon buttons show:</p>
+                <ul>
+                    <li><strong>⚡Energy Cost:</strong> How much energy to fire</li>
+                    <li><strong>⏱AP Cost:</strong> Action points required</li>
+                    <li><strong>📏Range:</strong> Min-Max attack distance</li>
+                    <li><strong>❄️Cooldown:</strong> Turns until ready</li>
+                </ul>
+            </div>
+            <div class="tutorial-section">
+                <h3>💡 Tips</h3>
+                <ul>
+                    <li>Ships maintain <strong>momentum</strong> - plan your moves!</li>
+                    <li>Energy weapons are good vs shields, kinetics vs hull</li>
+                    <li>Watch your <strong>action points</strong> - they limit actions per turn</li>
+                    <li>Use the <strong>End Turn</strong> button when done</li>
+                </ul>
+            </div>
+            <button id="close-tutorial-btn" class="action-btn">Got It!</button>
+            <label class="tutorial-checkbox">
+                <input type="checkbox" id="dont-show-tutorial">
+                <span>Don't show this again</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Modal System -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title"></h2>
+            <p id="modal-message"></p>
+            <div class="modal-buttons">
+                <button id="modal-confirm" class="action-btn">OK</button>
+                <button id="modal-cancel" class="action-btn secondary" style="display: none;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
