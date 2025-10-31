@@ -38,6 +38,37 @@ const UPGRADE_POOL = {
             ship.weapons.forEach(w => w.maxRange += 2);
         }
     },
+    needleArray: {
+        name: 'Needle Array',
+        description: 'Needle Beam +6 damage, +1 range (interceptor only)',
+        icon: '🎯',
+        type: 'weapon',
+        apply: (ship) => {
+            if (ship.shipClass !== 'interceptor') return;
+            ship.weapons.forEach(w => {
+                if (w.name === 'Needle Beam') {
+                    w.damage += 6;
+                    w.maxRange += 1;
+                }
+            });
+        }
+    },
+    flashCondensers: {
+        name: 'Flash Condensers',
+        description: 'Flash Cannon +10 damage and cooldown reduced to 0 (interceptor only)',
+        icon: '🔥',
+        type: 'weapon',
+        apply: (ship) => {
+            if (ship.shipClass !== 'interceptor') return;
+            ship.weapons.forEach(w => {
+                if (w.name === 'Flash Cannon') {
+                    w.damage += 10;
+                    w.cooldown = 0;
+                    w.cooldownRemaining = 0;
+                }
+            });
+        }
+    },
 
     // Defense upgrades
     reinforcedHull: {
@@ -121,6 +152,23 @@ const UPGRADE_POOL = {
         type: 'utility',
         apply: (ship) => {
             ship.hull = Math.min(ship.hull + Math.floor(ship.maxHull * 0.3), ship.maxHull);
+        }
+    },
+    empCapacitors: {
+        name: 'EMP Capacitors',
+        description: 'EMP Burst costs 15 less energy and +1 radius (interceptor only)',
+        icon: '💥',
+        type: 'utility',
+        apply: (ship) => {
+            if (ship.shipClass !== 'interceptor') return;
+            ship.empBurstRadiusBonus = (ship.empBurstRadiusBonus || 0) + 1;
+            if (ship.abilities) {
+                ship.abilities.forEach(ability => {
+                    if (ability.key === 'empBurst') {
+                        ability.energyCost = Math.max(20, ability.energyCost - 15);
+                    }
+                });
+            }
         }
     }
 };

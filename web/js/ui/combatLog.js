@@ -100,6 +100,10 @@ class CombatLog {
         this.addEntry(`${attackerName} fires ${weaponName} at ${targetName}`, 'warning');
     }
 
+    logAbilityUse(shipName, abilityName) {
+        this.addEntry(`${shipName} uses ${abilityName}`, 'info');
+    }
+
     logDamage(targetName, shieldDamage, hullDamage) {
         if (shieldDamage > 0 && hullDamage > 0) {
             this.addEntry(`${targetName} took ${Math.floor(shieldDamage)} shield damage and ${Math.floor(hullDamage)} hull damage`, 'error');

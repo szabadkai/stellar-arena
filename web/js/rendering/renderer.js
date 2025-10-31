@@ -19,6 +19,9 @@ class Renderer {
             y: 0,
             zoom: 1
         };
+        this.scrollDirection = { x: 0, y: 0 };
+        this.scrollSpeed = 250;
+        this.edgeScrollMargin = 60;
 
         // Visual effects
         this.projectiles = [];
@@ -37,14 +40,20 @@ class Renderer {
         this.reachableHexes = [];
         this.selectedWeapon = null;
         this.driftPaths = new Map(); // Ship ID -> predicted drift path
+        this.damageIndicators = [];
+        this.obstacleRotations = new Map();
+        this.obstacleSpeeds = new Map();
 
         this.resize();
+        this.worldBounds = this.computeWorldBounds();
     }
 
     resize() {
         this.canvas.width = this.canvas.offsetWidth;
         this.canvas.height = this.canvas.offsetHeight;
         this.layout.origin = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
+        this.worldBounds = this.computeWorldBounds();
+        this.clampCamera();
     }
 
     clear() {
@@ -53,14 +62,16 @@ class Renderer {
 
     render(deltaTime) {
         this.clear();
-
-        // Update ship animations
+        this.updateCamera(deltaTime);
         this.grid.getAllShips().forEach(ship => {
             ship.updateAnimation(deltaTime);
         });
 
         // Draw background
         this.drawBackground();
+
+        this.ctx.save();
+        this.ctx.translate(this.camera.x, this.camera.y);
 
         // Draw grid
         this.drawGrid();
@@ -109,10 +120,15 @@ class Renderer {
         this.particleSystem.update(deltaTime);
         this.particleSystem.draw(this.ctx);
 
+        // Draw floating combat text
+        this.updateAndDrawDamageIndicators(deltaTime);
+
         // Draw weapon range indicators
         if (this.selectedShip && this.selectedWeapon) {
             this.drawWeaponRange(this.selectedShip, this.selectedWeapon);
         }
+
+        this.ctx.restore();
     }
 
     drawBackground() {
@@ -176,6 +192,78 @@ class Renderer {
         this.drawHex(hex, color, null);
     }
 
+    computeWorldBounds() {
+        const maxQ = Math.floor(this.grid.width / 2);
+        const maxR = Math.floor(this.grid.height / 2);
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        for (let q = -maxQ; q <= maxQ; q++) {
+            for (let r = -maxR; r <= maxR; r++) {
+                const hex = new HexCoord(q, r);
+                if (!this.grid.isValidHex(hex)) continue;
+                const corners = this.layout.hexCorners(hex);
+                corners.forEach(corner => {
+                    if (corner.x < minX) minX = corner.x;
+                    if (corner.x > maxX) maxX = corner.x;
+                    if (corner.y < minY) minY = corner.y;
+                    if (corner.y > maxY) maxY = corner.y;
+                });
+            }
+        }
+
+        return { minX, maxX, minY, maxY };
+    }
+
+    clampCamera() {
+        if (!this.worldBounds) return;
+        const margin = 40;
+        const { minX, maxX, minY, maxY } = this.worldBounds;
+        let maxCamX = margin - minX;
+        let minCamX = this.canvas.width - margin - maxX;
+        let maxCamY = margin - minY;
+        let minCamY = this.canvas.height - margin - maxY;
+
+        if (minCamX > maxCamX) {
+            const center = (minCamX + maxCamX) / 2;
+            minCamX = maxCamX = center;
+        }
+        if (minCamY > maxCamY) {
+            const center = (minCamY + maxCamY) / 2;
+            minCamY = maxCamY = center;
+        }
+
+        this.camera.x = Math.min(maxCamX, Math.max(minCamX, this.camera.x));
+        this.camera.y = Math.min(maxCamY, Math.max(minCamY, this.camera.y));
+    }
+
+    updateCamera(deltaTime) {
+        if (!deltaTime) return;
+        const speed = this.scrollSpeed;
+        this.camera.x += this.scrollDirection.x * speed * deltaTime;
+        this.camera.y += this.scrollDirection.y * speed * deltaTime;
+        this.clampCamera();
+    }
+
+    updateEdgeScroll(x, y) {
+        const margin = this.edgeScrollMargin;
+        let dirX = 0;
+        let dirY = 0;
+        if (x < margin) dirX = 1;
+        else if (x > this.canvas.width - margin) dirX = -1;
+
+        if (y < margin) dirY = 1;
+        else if (y > this.canvas.height - margin) dirY = -1;
+
+        this.scrollDirection = { x: dirX, y: dirY };
+    }
+
+    resetEdgeScroll() {
+        this.scrollDirection = { x: 0, y: 0 };
+    }
+
     drawReachableHexes() {
         this.reachableHexes.forEach(({ hex, cost }) => {
             const alpha = 1 - (cost / 10);
@@ -208,12 +296,18 @@ class Renderer {
                 this.obstacleRotations.set(obstacleKey, 0);
             }
 
-            // Calculate rotation speed based on seed (different speeds for each asteroid)
-            const speedSeed = ((seed * 7919) % 1000) / 1000; // 0-1
-            const rotationSpeed = 0.05 + speedSeed * 0.15; // 0.05 to 0.2 radians per second
+            if (!this.obstacleSpeeds) {
+                this.obstacleSpeeds = new Map();
+            }
+            if (!this.obstacleSpeeds.has(obstacleKey)) {
+                const speedSeed = ((seed * 7919) % 1000) / 1000;
+                const rotationSpeed = 0.08 + speedSeed * 0.18;
+                this.obstacleSpeeds.set(obstacleKey, rotationSpeed);
+            }
 
             // Update rotation
             let rotation = this.obstacleRotations.get(obstacleKey);
+            const rotationSpeed = this.obstacleSpeeds.get(obstacleKey);
             rotation += rotationSpeed * deltaTime;
             this.obstacleRotations.set(obstacleKey, rotation);
 
@@ -547,9 +641,59 @@ class Renderer {
         this.particleSystem.createShieldImpact(pixel.x, pixel.y, 20);
     }
 
+    addShieldPulse(position) {
+        const pixel = this.layout.hexToPixel(position);
+        this.particleSystem.createShieldImpact(pixel.x, pixel.y, 30);
+        this.addDamageIndicator(position, 'Shield Surge', '#66ddff');
+    }
+
+    addTrailEffect(position, color = '#7ec7ff') {
+        const pixel = this.layout.hexToPixel(position);
+        const angle = Math.random() * Math.PI * 2;
+        this.particleSystem.createEngineTrail(pixel.x, pixel.y, angle, 12);
+    }
+
+    addChargeEffect(position, color = '#ffaa00') {
+        const pixel = this.layout.hexToPixel(position);
+        this.particleSystem.createExplosion(pixel.x, pixel.y, 15, color);
+    }
+
+    addDamageIndicator(position, text, color = '#ffffff') {
+        const pixel = this.layout.hexToPixel(position);
+        this.damageIndicators.push({
+            text,
+            color,
+            position: { x: pixel.x, y: pixel.y },
+            elapsed: 0,
+            duration: 1.2
+        });
+    }
+
+    updateAndDrawDamageIndicators(deltaTime) {
+        for (let i = this.damageIndicators.length - 1; i >= 0; i--) {
+            const indicator = this.damageIndicators[i];
+            indicator.elapsed += deltaTime;
+            indicator.position.y -= 25 * deltaTime;
+
+            const alpha = 1 - indicator.elapsed / indicator.duration;
+            if (alpha <= 0) {
+                this.damageIndicators.splice(i, 1);
+                continue;
+            }
+
+            this.ctx.save();
+            this.ctx.globalAlpha = Math.max(0, alpha);
+            this.ctx.fillStyle = indicator.color;
+            this.ctx.font = '16px "Courier New", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(indicator.text, indicator.position.x, indicator.position.y);
+            this.ctx.restore();
+        }
+    }
+
     // Input helpers
     pixelToHex(x, y) {
-        return this.layout.pixelToHex({ x, y });
+        return this.layout.pixelToHex({ x: x - this.camera.x, y: y - this.camera.y });
     }
 
     setSelectedShip(ship, showReachable = true) {

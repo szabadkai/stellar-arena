@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stellar Arena - Web Edition</title>
     <link rel="icon" type="image/svg+xml" href="/stellar-arena/assets/favicon-DHtxF5nM.svg">
-  <script type="module" crossorigin src="/stellar-arena/assets/index-CBXo-y9j.js"></script>
-  <link rel="stylesheet" crossorigin href="/stellar-arena/assets/index-Db0g60RC.css">
+  <script type="module" crossorigin src="/stellar-arena/assets/index-BudG1uJQ.js"></script>
+  <link rel="stylesheet" crossorigin href="/stellar-arena/assets/index-D19MAqDX.css">
 </head>
 <body>
     <!-- Main Menu Screen -->
@@ -85,8 +85,12 @@
                         </div>
                     </div>
                     <div id="weapon-select">
-                        <h4>Weapons</h4>
+                        <h4>Weapons <span class="hud-hint">(press 1-4)</span></h4>
                         <div id="weapon-buttons"></div>
+                    </div>
+                    <div id="ability-select">
+                        <h4>Abilities <span class="hud-hint">(press Q/E)</span></h4>
+                        <div id="ability-buttons"></div>
                     </div>
                 </div>
             </div>
@@ -113,6 +117,27 @@
                 <button id="combat-log-clear" class="log-clear-btn">Clear Log</button>
             </div>
         </div>
+        <!-- Game Over Overlay -->
+        <div id="game-over-overlay" class="game-over-overlay hidden">
+            <div class="game-over-card">
+                <h2 id="game-over-title">Defeat</h2>
+                <p id="game-over-message">All player ships have been destroyed.</p>
+                <div class="game-over-actions">
+                    <button id="game-over-retry-btn" class="action-btn">Retry Battle</button>
+                    <button id="game-over-exit-btn" class="action-btn secondary">Continue</button>
+                </div>
+            </div>
+        </div>
+        <!-- Mid-Battle Event Overlay -->
+        <div id="battle-event-overlay" class="battle-event-overlay hidden">
+            <div class="battle-event-card">
+                <h2 id="battle-event-title">Event</h2>
+                <p id="battle-event-description"></p>
+                <div id="battle-event-choices" class="battle-event-choices"></div>
+                <p id="battle-event-message" class="battle-event-message"></p>
+                <button id="battle-event-continue-btn" class="action-btn battle-event-continue hidden">Continue Battle</button>
+            </div>
+        </div>
         </div>
     </div>
 
@@ -120,6 +145,7 @@
     <div id="post-battle-screen" class="screen">
         <div class="post-battle-content">
             <h2 id="battle-result">Victory!</h2>
+            <div id="post-battle-summary" class="post-battle-summary"></div>
             <div class="rewards">
                 <h3>Rewards</h3>
                 <div id="rewards-list"></div>
@@ -127,6 +153,12 @@
             <div class="ship-status">
                 <h3>Fleet Status</h3>
                 <div id="fleet-status"></div>
+            </div>
+            <div id="post-battle-event" class="post-battle-event hidden">
+                <h3 id="event-title">Event</h3>
+                <p id="event-description"></p>
+                <div id="event-choices" class="event-choices"></div>
+                <p id="event-message" class="event-message"></p>
             </div>
             <div class="post-battle-actions">
                 <button id="continue-campaign-btn" class="action-btn">Continue Campaign</button>

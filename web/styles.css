@@ -23,6 +23,7 @@ body {
     display: flex;
     height: 100vh;
     width: 100vw;
+    position: relative;
 }
 
 #hud {
@@ -161,6 +162,34 @@ input[type="range"]::-moz-range-thumb {
     font-size: 14px;
 }
 
+#ability-select {
+    background: #151923;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+#ability-select h4 {
+    color: #6ab9ff;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+#ability-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ability-empty {
+    font-size: 12px;
+    color: #65748f;
+    padding: 8px;
+    border: 1px dashed #2a3f5f;
+    border-radius: 4px;
+    text-align: center;
+}
+
 #weapon-buttons {
     display: flex;
     flex-direction: column;
@@ -198,6 +227,223 @@ input[type="range"]::-moz-range-thumb {
 .weapon-btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.ability-btn {
+    background: #25354c;
+    border: 1px solid #6ab9ff;
+    color: #e0e0e0;
+    padding: 10px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    position: relative;
+    z-index: 100;
+    white-space: pre-line;
+    text-align: left;
+    line-height: 1.6;
+}
+
+.ability-btn:hover {
+    background: #2f4766;
+    border-color: #7ec7ff;
+}
+
+.ability-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hud-hint {
+    font-size: 11px;
+    color: #7a8ba7;
+    margin-left: 8px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.game-over-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 14, 26, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 20px;
+}
+
+.game-over-card {
+    background: rgba(21, 25, 35, 0.95);
+    border: 2px solid #ff4444;
+    border-radius: 12px;
+    padding: 32px 40px;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.game-over-card h2 {
+    font-size: 36px;
+    margin-bottom: 12px;
+    color: #ff6666;
+    letter-spacing: 2px;
+}
+
+.game-over-card p {
+    font-size: 16px;
+    color: #d0d0d0;
+    margin-bottom: 24px;
+    line-height: 1.4;
+}
+
+.game-over-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.game-over-actions .action-btn {
+    min-width: 140px;
+}
+
+.battle-event-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 10, 22, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 980;
+    padding: 20px;
+}
+
+.battle-event-card {
+    width: min(520px, 90vw);
+    background: rgba(21, 26, 39, 0.96);
+    border: 2px solid #6ab9ff;
+    border-radius: 14px;
+    padding: 32px 36px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    text-align: left;
+}
+
+.battle-event-card h2 {
+    font-size: 30px;
+    margin-bottom: 12px;
+    color: #6ab9ff;
+}
+
+.battle-event-card p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #d4e6ff;
+    margin-bottom: 18px;
+}
+
+.battle-event-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.battle-event-choice-btn {
+    background: #1f2d44;
+    border: 1px solid #4a9eff;
+    color: #e2eeff;
+    padding: 12px 14px;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.battle-event-choice-btn:hover:not(.disabled) {
+    background: #2b4160;
+    border-color: #7ec7ff;
+}
+
+.battle-event-choice-btn.disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.battle-event-message {
+    min-height: 22px;
+    font-size: 14px;
+    color: #7ec7ff;
+    margin-bottom: 10px;
+}
+
+.battle-event-continue {
+    width: 100%;
+}
+
+.post-battle-summary {
+    background: #151923;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.post-battle-summary span {
+    color: #6ab9ff;
+}
+
+.post-battle-event {
+    background: #151923;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #2a3f5f;
+    margin-top: 20px;
+}
+
+.post-battle-event h3 {
+    color: #ffaa00;
+    margin-bottom: 10px;
+}
+
+.event-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.event-choice-btn {
+    background: #2a3f5f;
+    border: 1px solid #4a9eff;
+    color: #e0e0e0;
+    padding: 12px;
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.event-choice-btn:hover {
+    background: #345278;
+    border-color: #6ab9ff;
+}
+
+.event-choice-btn.disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.event-message {
+    margin-top: 15px;
+    color: #6ab9ff;
+    min-height: 20px;
 }
 
 #initiative-queue {

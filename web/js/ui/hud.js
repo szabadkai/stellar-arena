@@ -25,10 +25,12 @@ class HUD {
         this.enginesAlloc = document.getElementById('engines-alloc');
 
         this.weaponButtons = document.getElementById('weapon-buttons');
+        this.abilityButtons = document.getElementById('ability-buttons');
         this.queueList = document.getElementById('queue-list');
 
         // Track which ship we last updated weapons for
         this.lastWeaponUpdateShipId = null;
+        this.lastAbilityUpdateShipId = null;
 
         // Setup event listeners
         this.setupEventListeners();
@@ -97,6 +99,14 @@ class HUD {
         } else {
             // Just update button states without rebuilding
             this.updateWeaponButtonStates(ship);
+        }
+
+        const abilityKey = `${ship.id}_${currentShip?.id}_${ship.abilities.length}`;
+        if (this.lastAbilityUpdateShipId !== abilityKey) {
+            this.lastAbilityUpdateShipId = abilityKey;
+            this.updateAbilityButtons(ship);
+        } else {
+            this.updateAbilityButtonStates(ship);
         }
     }
 
@@ -247,6 +257,79 @@ class HUD {
             }
 
             this.weaponButtons.appendChild(button);
+        });
+    }
+
+    updateAbilityButtons(ship) {
+        this.abilityButtons.innerHTML = '';
+
+        if (!ship.abilities || ship.abilities.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'ability-empty';
+            emptyState.textContent = 'No tactical abilities available.';
+            this.abilityButtons.appendChild(emptyState);
+            return;
+        }
+
+        ship.abilities.forEach((ability, index) => {
+            const button = document.createElement('button');
+            button.className = 'ability-btn';
+            button.dataset.index = index;
+            button.title = ability.description;
+
+            let text = `${ability.icon || '♦️'} ${ability.name}\n`;
+            text += `⚡${ability.energyCost}E  ⏱${ability.apCost}AP`;
+            if (ability.cooldownRemaining > 0) {
+                text += `  ❄️${ability.cooldownRemaining}`;
+            }
+
+            button.textContent = text;
+
+            button.addEventListener('click', () => {
+                this.game.useAbility(index);
+            });
+
+            this.abilityButtons.appendChild(button);
+        });
+
+        this.updateAbilityButtonStates(ship);
+    }
+
+    updateAbilityButtonStates(ship) {
+        const currentShip = this.game.turnManager.getCurrentShip();
+        const isThisShipsTurn = currentShip && currentShip.id === ship.id;
+
+        const buttons = this.abilityButtons.querySelectorAll('.ability-btn');
+
+        buttons.forEach((button, index) => {
+            const ability = ship.abilities[index];
+            if (!ability) return;
+
+            const hasEnergy = ship.energy >= ability.energyCost;
+            const hasAP = ship.actionPoints >= ability.apCost;
+            const ready = ability.cooldownRemaining === 0;
+
+            let text = `${ability.icon || '♦️'} ${ability.name}\n`;
+            text += `⚡${ability.energyCost}E  ⏱${ability.apCost}AP`;
+            if (!ready) {
+                text += `  ❄️${ability.cooldownRemaining}`;
+            }
+            button.textContent = text;
+
+            const canUse = isThisShipsTurn && hasEnergy && hasAP && ready;
+
+            button.classList.toggle('disabled', !canUse);
+            button.disabled = !canUse;
+
+            if (!hasEnergy) {
+                button.title = `${ability.description}\nRequires ${ability.energyCost} energy`;
+            } else if (!hasAP) {
+                button.title = `${ability.description}\nRequires ${ability.apCost} AP`;
+            } else if (!ready) {
+                button.title = `${ability.description}\nCooling down (${ability.cooldownRemaining} turn${ability.cooldownRemaining === 1 ? '' : 's'})`;
+            } else {
+                button.title = ability.description;
+            }
         });
     }
 

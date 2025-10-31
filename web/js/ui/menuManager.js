@@ -344,38 +344,118 @@ class MenuManager {
         }
     }
 
-    showPostBattle(victory) {
+    showPostBattle(victory, battleSummary = null) {
         this.showScreen('post-battle-screen');
+        this.currentBattleVictory = victory;
+        this.currentBattleSummary = battleSummary;
 
         const resultEl = document.getElementById('battle-result');
         resultEl.textContent = victory ? 'VICTORY!' : 'DEFEAT';
         resultEl.className = victory ? 'victory' : 'defeat';
 
-        if (victory) {
-            // Show rewards
-            const rewards = this.campaign.rewards;
-            document.getElementById('rewards-list').innerHTML = `
-                <div class="reward-item">
-                    Credits: <span class="value">+${rewards.credits}</span>
-                </div>
-                <div class="reward-item">
-                    Scrap: <span class="value">+${rewards.scrap}</span>
-                </div>
-            `;
-
-            // Show fleet status
-            const fleetStatus = this.campaign.getFleetStatus();
-            const statusHtml = fleetStatus.map(ship => `
-                <div class="fleet-status-item">
-                    <span>${ship.name}</span>
-                    <span style="color: ${ship.hullPercent < 50 ? '#ff4444' : '#44ff44'}">${ship.hullPercent}% Hull</span>
-                </div>
-            `).join('');
-
-            document.getElementById('fleet-status').innerHTML = statusHtml;
+        const summaryEl = document.getElementById('post-battle-summary');
+        if (battleSummary) {
+            summaryEl.innerHTML = `Turns: <span>${battleSummary.turnsElapsed}</span> &nbsp;|&nbsp; ` +
+                `Damage Dealt: <span>${Math.floor(battleSummary.damageDealt)}</span> &nbsp;|&nbsp; ` +
+                `Damage Taken: <span>${Math.floor(battleSummary.damageTaken)}</span> &nbsp;|&nbsp; ` +
+                `Abilities Used: <span>${battleSummary.abilitiesUsed}</span>`;
+            summaryEl.classList.remove('hidden');
         } else {
+            summaryEl.innerHTML = '';
+            summaryEl.classList.add('hidden');
+        }
+
+        this.renderRewards(victory);
+        this.renderFleetStatus();
+        this.renderPostBattleEvent(victory);
+    }
+
+    renderRewards(victory) {
+        if (!victory) {
             document.getElementById('rewards-list').innerHTML = '<p style="color: #ff4444;">Campaign Failed</p>';
-            document.getElementById('fleet-status').innerHTML = '';
+            return;
+        }
+
+        const rewards = this.campaign.rewards;
+        document.getElementById('rewards-list').innerHTML = `
+            <div class="reward-item">
+                Credits: <span class="value">+${rewards.credits}</span>
+            </div>
+            <div class="reward-item">
+                Scrap: <span class="value">+${rewards.scrap}</span>
+            </div>
+        `;
+    }
+
+    renderFleetStatus() {
+        const fleetStatus = this.campaign.getFleetStatus();
+        const statusHtml = fleetStatus.map(ship => `
+            <div class="fleet-status-item">
+                <span>${ship.name}</span>
+                <span style="color: ${ship.hullPercent < 50 ? '#ff4444' : '#44ff44'}">${ship.hullPercent}% Hull</span>
+            </div>
+        `).join('');
+
+        document.getElementById('fleet-status').innerHTML = statusHtml;
+    }
+
+    renderPostBattleEvent(victory) {
+        const eventWrapper = document.getElementById('post-battle-event');
+        const titleEl = document.getElementById('event-title');
+        const descriptionEl = document.getElementById('event-description');
+        const choicesEl = document.getElementById('event-choices');
+        const messageEl = document.getElementById('event-message');
+        const continueBtn = document.getElementById('continue-campaign-btn');
+
+        const eventData = victory ? this.campaign.pendingEvent : null;
+
+        choicesEl.innerHTML = '';
+        messageEl.textContent = '';
+
+        if (eventData) {
+            eventWrapper.classList.remove('hidden');
+            titleEl.textContent = eventData.title;
+            descriptionEl.textContent = eventData.description;
+            continueBtn.disabled = true;
+
+            eventData.choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'event-choice-btn';
+                let label = choice.label;
+                if (choice.costCredits > 0) {
+                    label += ` (Cost: ${choice.costCredits}₡)`;
+                }
+                btn.textContent = label;
+                btn.addEventListener('click', () => {
+                    this.handleEventChoice(choice.id, btn, messageEl, continueBtn);
+                });
+                choicesEl.appendChild(btn);
+            });
+        } else {
+            eventWrapper.classList.add('hidden');
+            continueBtn.disabled = false;
+        }
+    }
+
+    handleEventChoice(choiceId, buttonEl, messageEl, continueBtn) {
+        if (!this.campaign.pendingEvent) {
+            return;
+        }
+
+        const result = this.campaign.resolvePendingEvent(choiceId);
+
+        if (result.success) {
+            messageEl.textContent = result.message;
+            const buttons = document.querySelectorAll('#event-choices .event-choice-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('disabled');
+            });
+            continueBtn.disabled = false;
+            this.renderFleetStatus();
+            this.renderRewards(this.currentBattleVictory);
+        } else {
+            messageEl.textContent = result.message;
         }
     }
 

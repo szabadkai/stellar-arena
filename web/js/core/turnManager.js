@@ -8,6 +8,7 @@ class TurnManager {
         this.initiativeQueue = [];
         this.currentShipIndex = 0;
         this.phase = 'initiative'; // 'initiative', 'action', 'end'
+        this.immediateMode = false;
     }
 
     // Start a new round
@@ -93,9 +94,13 @@ class TurnManager {
         }
 
         // Start next round
-        setTimeout(() => {
+        if (this.immediateMode) {
             this.startRound();
-        }, 500);
+        } else {
+            setTimeout(() => {
+                this.startRound();
+            }, 500);
+        }
 
         return { gameOver: false };
     }
@@ -131,13 +136,14 @@ class TurnManager {
     }
 
     // Process enemy AI turn
-    processEnemyTurn(renderer) {
+    processEnemyTurn(renderer, game = null) {
         const currentShip = this.getCurrentShip();
 
         if (!currentShip || currentShip.team !== 'enemy') {
             console.warn('processEnemyTurn called but no valid enemy ship');
             return;
         }
+        const aiProfile = currentShip.aiProfile || 'standard';
 
         // Prevent re-entry
         if (this._processingAI) {
@@ -147,6 +153,7 @@ class TurnManager {
         this._processingAI = true;
 
         console.log(`AI processing turn for ${currentShip.name}`);
+        const gameInstance = game || (typeof window !== 'undefined' && window.app ? window.app.game : null);
 
         try {
             // Advanced AI: prioritize targets, use tactics
@@ -162,6 +169,37 @@ class TurnManager {
             let bestTarget = this.chooseBestTarget(currentShip, playerShips);
             console.log(`Best target: ${bestTarget.name}`);
 
+            this._lastFocusTargetId = bestTarget.id;
+
+            // Consider tactical abilities before movement
+            const abilityIndex = this.chooseEnemyAbility(currentShip, bestTarget);
+            if (abilityIndex !== null) {
+                const ability = currentShip.abilities[abilityIndex];
+                if (currentShip.useAbility(abilityIndex, { game: gameInstance, renderer })) {
+                    console.log(`Enemy uses ability ${ability.name}`);
+                    if (gameInstance) {
+                        gameInstance.recordAbilityUse(currentShip);
+                        gameInstance.hud?.showMessage(`${currentShip.name} activates ${ability.name}`, 'warning', 1500);
+                        gameInstance.combatLog?.logEnemy(`${currentShip.name} activates ${ability.name}`);
+                        gameInstance.hud?.update();
+                    }
+                }
+            }
+
+            let currentPlayerShips = this.grid.getShipsByTeam('player');
+            if (currentPlayerShips.length === 0) {
+                this._processingAI = false;
+                this.nextTurn();
+                return;
+            }
+            bestTarget = this.chooseBestTarget(currentShip, currentPlayerShips);
+            if (!bestTarget) {
+                this._processingAI = false;
+                this.nextTurn();
+                return;
+            }
+            this._lastFocusTargetId = bestTarget.id;
+
             // FIRST: Check if we can attack from current position
             const weapon = currentShip.weapons[0];
             let canAttackFromHere = false;
@@ -172,15 +210,23 @@ class TurnManager {
             }
 
             // Only move if we can't attack OR if we have lots of AP to spare
-            const shouldConsiderMoving = !canAttackFromHere || currentShip.actionPoints >= 4;
+            const healthRatio = currentShip.maxHull > 0 ? currentShip.hull / currentShip.maxHull : 1;
+            const shieldRatio = currentShip.maxShield > 0 ? currentShip.shield / currentShip.maxShield : 0;
+            const retreatHullThreshold = aiProfile === 'aggressive' ? 0.22 : aiProfile === 'anchor' ? 0.45 : aiProfile === 'cautious' ? 0.55 : 0.35;
+            const retreatShieldThreshold = aiProfile === 'aggressive' ? 0.25 : 0.4;
+            const retreatMode = healthRatio < retreatHullThreshold && shieldRatio < retreatShieldThreshold;
 
-            if (weapon && shouldConsiderMoving && currentShip.actionPoints > 1) {
+            const shouldConsiderMoving = retreatMode || !canAttackFromHere || currentShip.actionPoints >= 4;
+
+            if (weapon && bestTarget && shouldConsiderMoving && currentShip.actionPoints > 1) {
                 const distance = currentShip.position.distance(bestTarget.position);
                 const optimalRange = weapon.minRange + Math.floor((weapon.maxRange - weapon.minRange) / 2);
 
                 // Move if: out of range, too close
-                const mustMove = distance > weapon.maxRange || distance < weapon.minRange;
-                const couldImprove = Math.abs(distance - optimalRange) > 2 && currentShip.actionPoints >= 4;
+                const mustMove = retreatMode ? distance <= weapon.maxRange - 1 : (distance > weapon.maxRange || distance < weapon.minRange);
+                const couldImprove = retreatMode
+                    ? distance <= weapon.maxRange && currentShip.actionPoints >= 2
+                    : Math.abs(distance - optimalRange) > 2 && currentShip.actionPoints >= 4;
 
                 if (mustMove || couldImprove) {
                     const reachable = this.grid.getReachableHexes(currentShip);
@@ -198,18 +244,32 @@ class TurnManager {
                             if (dist >= weapon.minRange && dist <= weapon.maxRange) {
                                 score += 100;
                                 // Bonus for being at optimal range
-                                score -= Math.abs(dist - optimalRange) * 10;
+                                score -= Math.abs(dist - optimalRange) * 12;
                             } else if (dist < weapon.maxRange + 2) {
                                 // Acceptable if close to range
-                                score += 50 - (dist - weapon.maxRange) * 20;
+                                score += 45 - (dist - weapon.maxRange) * 18;
                             } else {
                                 // Penalize being too far
-                                score -= dist * 5;
+                                score -= dist * 6;
                             }
 
                             // Prefer getting closer if out of range
-                            if (distance > weapon.maxRange) {
-                                score += (distance - dist) * 15;
+                            if (!retreatMode && distance > weapon.maxRange) {
+                                score += (distance - dist) * (aiProfile === 'aggressive' ? 22 : 15);
+                            }
+
+                            if (retreatMode) {
+                                score += (dist - distance) * 20;
+                                if (dist <= weapon.maxRange) {
+                                    score -= (weapon.maxRange - dist) * 25;
+                                }
+                            }
+                            if (aiProfile === 'flanker') {
+                                score -= Math.abs(dist - optimalRange) * 5;
+                                score -= this.computeClusterPenalty(hex, bestTarget.position);
+                            }
+                            if (aiProfile === 'anchor') {
+                                score -= dist * 3;
                             }
 
                             // Prefer moves that leave AP for attacking
@@ -228,29 +288,56 @@ class TurnManager {
                             const path = this.grid.findPath(currentShip.position, bestHex, currentShip);
                             if (path && path.length > 0) {
                                 console.log(`Moving to better position (${bestHex.q}, ${bestHex.r})`);
-                                currentShip.move(path, this.grid);
+                                let movePath = path.slice(0, currentShip.actionPoints);
+                                if (movePath.length === 0 && path.length > 0) {
+                                    movePath = [path[0]];
+                                }
+                                if (!currentShip.move(movePath, this.grid)) {
+                                    console.log(` -> movement failed (needed ${movePath.length} AP, had ${currentShip.actionPoints})`);
+                                } else {
+                                    console.log(` -> new position: ${currentShip.position.toString()}`);
+                                }
                             }
                         }
                     }
                 }
             }
 
+            currentPlayerShips = this.grid.getShipsByTeam('player');
+            if (currentPlayerShips.length === 0) {
+                this._processingAI = false;
+                this.nextTurn();
+                return;
+            }
+            bestTarget = this.chooseBestTarget(currentShip, currentPlayerShips);
+
             // SECOND: Attack with all available weapons (with safety limit)
             let attacksMade = 0;
             const maxAttacks = 10; // Safety limit to prevent infinite loops
 
             while (currentShip.actionPoints > 0 && currentShip.energy > 0 && attacksMade < maxAttacks) {
-                const bestWeapon = this.chooseBestWeapon(currentShip, bestTarget);
+                const attackPlan = this.selectBestAttack(currentShip);
 
-                if (bestWeapon === null) {
-                    console.log('No weapons can fire');
+                if (!attackPlan) {
+                    console.log('No viable attack plan');
+                    if (this.forceAdvanceTowardsTarget(currentShip)) {
+                        console.log('Fallback movement executed, re-evaluating attack');
+                        continue;
+                    }
+                    console.log('Unable to advance, ending attack phase');
                     break;
                 }
 
-                const weapon = currentShip.weapons[bestWeapon];
-                console.log(`Attacking with ${weapon.name} (AP: ${currentShip.actionPoints}, Energy: ${currentShip.energy})`);
+                const { target: attackTarget, weaponChoice } = attackPlan;
+                if (!attackTarget || attackTarget.isDestroyed) {
+                    break;
+                }
 
-                const attackData = currentShip.fireWeapon(bestWeapon, bestTarget);
+                const weaponIndex = weaponChoice.index;
+                const weapon = currentShip.weapons[weaponIndex];
+                console.log(`Attacking ${attackTarget.name} with ${weapon.name} (AP: ${currentShip.actionPoints}, Energy: ${currentShip.energy})`);
+
+                const attackData = currentShip.fireWeapon(weaponIndex, attackTarget);
 
                 if (attackData) {
                     // Calculate damage
@@ -259,7 +346,7 @@ class TurnManager {
 
                     // Create visual effect
                     const startPixel = renderer.layout.hexToPixel(currentShip.position);
-                    const endPixel = renderer.layout.hexToPixel(bestTarget.position);
+                    const endPixel = renderer.layout.hexToPixel(attackTarget.position);
 
                     if (weapon.type === 'energy') {
                         renderer.addBeam(startPixel, endPixel, weapon);
@@ -267,30 +354,70 @@ class TurnManager {
                         renderer.addProjectile(startPixel, endPixel, weapon);
                     }
 
+                    const totalDamage = Math.floor((damageResult.shieldDamage || 0) + (damageResult.hullDamage || 0));
+                    if (totalDamage > 0) {
+                        renderer.addDamageIndicator(attackTarget.position, `-${totalDamage}`, '#ff9966');
+                    }
+
+                    if (gameInstance) {
+                        gameInstance.recordDamage(currentShip, attackTarget, damageResult);
+                        if (gameInstance.combatLog) {
+                            gameInstance.combatLog.logEnemy(`${currentShip.name} hits ${attackTarget.name}`);
+                        }
+                    }
+
                     attacksMade++;
 
                     // Check if target destroyed
-                    if (bestTarget.isDestroyed) {
-                        console.log(`Target ${bestTarget.name} destroyed!`);
-                        break;
+                    if (attackTarget.isDestroyed) {
+                        console.log(`Target ${attackTarget.name} destroyed!`);
+                        if (this._lastFocusTargetId === attackTarget.id) {
+                            this._lastFocusTargetId = null;
+                        }
+                        renderer.addExplosion(attackTarget.position);
+                        this.grid.removeShip(attackTarget.position);
+                        if (gameInstance?.hud) {
+                            gameInstance.hud.showMessage(`${attackTarget.name} destroyed!`, 'error', 2500);
+                        }
+                        if (gameInstance?.combatLog) {
+                            gameInstance.combatLog.logDestruction(attackTarget.name);
+                        }
+
+                        const remainingPlayers = this.grid.getShipsByTeam('player');
+                        if (remainingPlayers.length === 0) {
+                            break;
+                        }
+                        bestTarget = this.chooseBestTarget(currentShip, remainingPlayers);
                     }
+
+                    gameInstance?.hud?.update();
                 } else {
                     console.log('Attack failed');
                     break;
                 }
             }
 
-            console.log(`AI turn complete: ${attacksMade} attacks made`);
+            if (attacksMade === 0 && (!bestTarget || !this.selectBestAttack(currentShip))) {
+                console.log('AI turn: no actions possible, forcing end turn');
+            } else {
+                console.log(`AI turn complete: ${attacksMade} attacks made`);
+            }
         } catch (error) {
             console.error('Error in enemy AI:', error);
         } finally {
             // ALWAYS end turn after a delay, even if something went wrong
-            console.log('Scheduling turn end');
-            setTimeout(() => {
-                console.log('Ending enemy turn');
+            if (this.immediateMode) {
+                console.log('Ending enemy turn (immediate mode)');
                 this._processingAI = false;
                 this.nextTurn();
-            }, 1000);
+            } else {
+                console.log('Scheduling turn end');
+                setTimeout(() => {
+                    console.log('Ending enemy turn');
+                    this._processingAI = false;
+                    this.nextTurn();
+                }, 1000);
+            }
         }
     }
 
@@ -300,29 +427,8 @@ class TurnManager {
         let bestScore = -Infinity;
 
         playerShips.forEach(target => {
-            let score = 0;
-
-            // Prioritize low-health targets (finish them off)
-            const hullPercent = target.hull / target.maxHull;
-            if (hullPercent < 0.3) {
-                score += 100; // Very low health - finish kill
-            } else if (hullPercent < 0.5) {
-                score += 50; // Moderately damaged
-            }
-
-            // Prioritize high-damage threats
-            const totalWeaponDamage = target.weapons.reduce((sum, w) => sum + (w.damage || 0), 0);
-            score += totalWeaponDamage * 0.5;
-
-            // Consider distance (prefer closer targets, but not too heavily)
-            const distance = currentShip.position.distance(target.position);
-            score -= distance * 2;
-
-            // Bonus for targets without shields
-            if (target.shield === 0) {
-                score += 30;
-            }
-
+            if (target.isDestroyed) return;
+            const score = this.evaluateTargetScore(currentShip, target);
             if (score > bestScore) {
                 bestScore = score;
                 bestTarget = target;
@@ -334,7 +440,7 @@ class TurnManager {
 
     // Choose best weapon for target
     chooseBestWeapon(currentShip, target) {
-        let bestWeaponIndex = null;
+        let bestChoice = null;
         let bestScore = -Infinity;
 
         currentShip.weapons.forEach((weapon, index) => {
@@ -351,36 +457,325 @@ class TurnManager {
                 return; // Skip this weapon
             }
 
-            let score = 0;
-
-            // Base score on damage potential
-            score += weapon.damage || 0;
-
-            // Energy weapons are better vs shields
-            if (weapon.type === 'energy' && target.shield > 0) {
-                score += 20;
-            }
-
-            // Kinetic weapons are better vs hull
-            if (weapon.type === 'kinetic' && target.shield === 0) {
-                score += 20;
-            }
-
-            // Prefer weapons with lower energy cost (efficiency)
-            score -= weapon.energyCost * 0.5;
-
-            // Prefer weapons with no cooldown
-            if (weapon.cooldownRemaining === 0) {
-                score += 10;
-            }
+            const { score, expectedDamage } = this.evaluateWeaponChoice(currentShip, target, weapon);
 
             if (score > bestScore) {
                 bestScore = score;
-                bestWeaponIndex = index;
+                bestChoice = { index, score, expectedDamage };
             }
         });
 
-        return bestWeaponIndex; // Returns null if no weapons available
+        return bestChoice; // Returns null if no weapons available
+    }
+
+    evaluateWeaponChoice(attacker, target, weapon) {
+        let score = 0;
+        const baseDamage = weapon.damage || 0;
+        const targetShield = target.shield || 0;
+        const targetHull = target.hull || 0;
+        const profile = attacker.aiProfile || 'standard';
+
+        // Estimate damage effectiveness
+        let expectedDamage = baseDamage;
+
+        if (weapon.type === 'energy') {
+            expectedDamage *= targetShield > 0 ? 1.1 : 0.85;
+        } else if (weapon.type === 'kinetic') {
+            expectedDamage *= targetShield > 0 ? 0.75 : 1.2;
+        } else if (weapon.type === 'missile' || weapon.type === 'explosive') {
+            expectedDamage *= 1.05;
+        }
+
+        // Account for shield mitigation
+        if (targetShield > 0) {
+            expectedDamage = Math.min(expectedDamage, targetShield + targetHull);
+        }
+
+        score += expectedDamage * 1.4;
+
+        // Efficiency considerations
+        score -= weapon.energyCost * 0.4;
+        score -= weapon.apCost * 1.5;
+        score += Math.max(0, attacker.actionPoints - weapon.apCost) * 3;
+
+        // Bonus for finishing strikes
+        if (expectedDamage >= targetHull && targetHull > 0) {
+            score += 35;
+        }
+
+        // Prefer weapons that leave AP for reposition when low
+        if (attacker.hull / attacker.maxHull < 0.3 && attacker.actionPoints - weapon.apCost <= 0) {
+            score -= 25;
+        }
+
+        if (weapon.cooldownRemaining === 0) {
+            score += 8;
+        }
+
+        switch (profile) {
+            case 'aggressive':
+                score += expectedDamage * 0.2;
+                score -= weapon.apCost * 0.5;
+                break;
+            case 'cautious':
+                score -= expectedDamage * 0.1;
+                score -= weapon.energyCost * 0.3;
+                break;
+            case 'skirmisher':
+            case 'flanker':
+                score += (weapon.maxRange - weapon.minRange) * 0.5;
+                if (expectedDamage > targetHull && weapon.apCost <= 1) {
+                    score += 10;
+                }
+                break;
+            case 'anchor':
+                if (weapon.type === 'energy') score += 12;
+                break;
+            case 'vanguard':
+                score += weapon.apCost <= 1 ? 6 : 0;
+                break;
+            default:
+                break;
+        }
+
+        return { score, expectedDamage: Math.max(0, expectedDamage) };
+    }
+
+    evaluateTargetScore(currentShip, target) {
+        let score = 0;
+        const hullPercent = target.hull / Math.max(1, target.maxHull);
+        const shieldPercent = target.shield / Math.max(1, target.maxShield || 1);
+        const profile = currentShip.aiProfile || 'standard';
+
+        // Killing blow incentives
+        score += (1 - hullPercent) * 120;
+        if (target.shield === 0) {
+            score += 25;
+        }
+
+        // Threat based on potential damage to current ship
+        const threat = this.estimateTargetThreat(target, currentShip);
+        score += threat * 0.5;
+
+        const distance = currentShip.position.distance(target.position);
+        score -= distance * 1.8;
+
+        const lineOfSight = WeaponSystem.hasLineOfSight(currentShip, target, this.grid);
+        if (!lineOfSight) {
+            score -= 45;
+        }
+
+        const weaponAccess = this.countWeaponsInRange(currentShip, target);
+        if (weaponAccess.available === 0) {
+            score -= 30 + weaponAccess.rangeGap * 5;
+        } else {
+            score += weaponAccess.available * 18;
+        }
+
+        if (this._lastFocusTargetId && target.id === this._lastFocusTargetId) {
+            score += 25;
+        }
+
+        if (currentShip.shield < currentShip.maxShield * 0.2 && target.shield > 0) {
+            score += 10;
+        }
+
+        // Avoid overcommitting to distant low threat targets
+        if (threat < 10 && distance > 4) {
+            score -= 15;
+        }
+
+        switch (profile) {
+            case 'aggressive':
+                score += (1 - hullPercent) * 35;
+                score += threat * 0.2;
+                score -= distance * 0.5;
+                break;
+            case 'cautious':
+                score -= (1 - shieldPercent) * 20;
+                score -= distance > 4 ? 10 : 0;
+                if (target.shield === 0) score += 15;
+                break;
+            case 'flanker':
+            case 'skirmisher':
+                score -= Math.abs(distance - 4) * 8;
+                score += weaponAccess.available * 5;
+                break;
+            case 'anchor':
+                score += shieldPercent * 10;
+                score -= distance * 2;
+                break;
+            case 'vanguard':
+            case 'opportunist':
+                score += (1 - hullPercent) * 20 + threat * 0.3;
+                break;
+            default:
+                break;
+        }
+
+        return score;
+    }
+
+    estimateTargetThreat(attacker, targetShip) {
+        let threat = 0;
+        const distance = attacker.position.distance(targetShip.position);
+
+        attacker.weapons.forEach(weapon => {
+            const hasAP = (attacker.actionPoints || attacker.maxActionPoints || 0) >= weapon.apCost;
+            const hasEnergy = (attacker.energy || attacker.maxEnergy || 0) >= weapon.energyCost;
+            if (!hasAP || !hasEnergy || weapon.cooldownRemaining > 0) return;
+            if (distance > weapon.maxRange || distance < weapon.minRange) return;
+
+            let potential = weapon.damage || 0;
+            if (weapon.type === 'energy' && targetShip.shield > 0) {
+                potential *= 1.1;
+            } else if (weapon.type === 'kinetic' && targetShip.shield === 0) {
+                potential *= 1.2;
+            }
+            threat += potential;
+        });
+
+        return threat;
+    }
+
+    countWeaponsInRange(currentShip, target) {
+        const distance = currentShip.position.distance(target.position);
+        let available = 0;
+        let rangeGap = Infinity;
+
+        currentShip.weapons.forEach(weapon => {
+            const gap = distance > weapon.maxRange ? distance - weapon.maxRange : weapon.minRange - distance;
+            rangeGap = Math.min(rangeGap, Math.max(0, gap));
+
+            if (distance <= weapon.maxRange && distance >= weapon.minRange) {
+                if (currentShip.canFireWeapon(weapon, target)) {
+                    available += 1;
+                }
+            }
+        });
+
+        if (!isFinite(rangeGap)) {
+            rangeGap = 5;
+        }
+
+        return { available, rangeGap };
+    }
+
+    selectBestAttack(currentShip) {
+        const playerShips = this.grid.getShipsByTeam('player').filter(ship => !ship.isDestroyed);
+        let bestPlan = null;
+        let bestScore = -Infinity;
+
+        playerShips.forEach(target => {
+            const weaponChoice = this.chooseBestWeapon(currentShip, target);
+            if (!weaponChoice) return;
+
+            const targetScore = this.evaluateTargetScore(currentShip, target);
+            const totalScore = weaponChoice.score + targetScore * 0.35;
+
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestPlan = { target, weaponChoice, totalScore };
+            }
+        });
+
+        return bestPlan;
+    }
+
+    computeClusterPenalty(hex, focusHex) {
+        if (!hex || !focusHex) return 0;
+        const distance = hex.distance(focusHex);
+        if (distance >= 3) return 0;
+        return (3 - distance) * 12;
+    }
+
+    forceAdvanceTowardsTarget(currentShip) {
+        if (currentShip.actionPoints <= 0) {
+            return false;
+        }
+
+        const opponents = this.grid.getShipsByTeam('player').filter(ship => !ship.isDestroyed);
+        if (opponents.length === 0) {
+            return false;
+        }
+
+        const target = this.chooseBestTarget(currentShip, opponents) || opponents[0];
+        if (!target) return false;
+
+        let path = this.grid.findPath(currentShip.position, target.position, currentShip);
+        if (!path || path.length === 0) {
+            let bestPath = null;
+            let bestCost = Infinity;
+            target.position.neighbors().forEach(neighbor => {
+                if (!this.grid.isValidHex(neighbor) || this.grid.isBlocked(neighbor)) {
+                    return;
+                }
+                const candidatePath = this.grid.findPath(currentShip.position, neighbor, currentShip);
+                if (candidatePath && candidatePath.length > 0 && candidatePath.length < bestCost) {
+                    bestCost = candidatePath.length;
+                    bestPath = candidatePath;
+                }
+            });
+            path = bestPath;
+        }
+
+        if (!path || path.length === 0) {
+            return false;
+        }
+
+        const steps = Math.min(currentShip.actionPoints, Math.max(1, Math.floor(path.length / 2)));
+        const truncatedPath = path.slice(0, steps);
+
+        if (truncatedPath.length === 0) {
+            return false;
+        }
+
+        console.log(`AI fallback moving ${currentShip.name} toward ${target.name}`);
+        const moved = currentShip.move(truncatedPath, this.grid);
+        if (moved) {
+            console.log(` -> ${currentShip.name} new position: ${currentShip.position.toString()}`);
+        }
+        return Boolean(moved);
+    }
+
+    // Pick an ability for AI to use this turn
+    chooseEnemyAbility(ship, target) {
+        if (!ship.abilities || ship.abilities.length === 0) {
+            return null;
+        }
+
+        const abilities = ship.abilities;
+        const hullRatio = ship.maxHull > 0 ? ship.hull / ship.maxHull : 1;
+        const shieldRatio = ship.maxShield > 0 ? ship.shield / ship.maxShield : 0;
+        const targetShieldRatio = target && target.maxShield > 0 ? target.shield / target.maxShield : 0;
+        const profile = ship.aiProfile || 'standard';
+
+        const findAbility = (key) => abilities.findIndex(ability => ability.key === key && ship.canUseAbility(ability));
+
+        // Emergency shield restoration
+        const shieldSurge = findAbility('shieldSurge');
+        if (shieldSurge !== -1 && (shieldRatio < 0.4 || hullRatio < 0.5 || profile === 'anchor')) {
+            return shieldSurge;
+        }
+
+        // Defensive maneuver when fragile
+        const evasive = findAbility('evasiveManeuver');
+        if (evasive !== -1 && (hullRatio < (profile === 'cautious' ? 0.55 : 0.35) || (target && target.weapons && target.weapons.some(w => (w.damage || 0) > 45)))) {
+            return evasive;
+        }
+
+        // Offensive overcharge when in good shape
+        const overcharge = findAbility('weaponOvercharge');
+        if (overcharge !== -1 && profile !== 'cautious' && hullRatio > 0.4 && ship.energy > ship.maxEnergy * 0.4) {
+            const ability = ship.abilities[overcharge];
+            const apAfter = ship.actionPoints - ability.apCost;
+            const weaponsAvailable = this.countWeaponsInRange(ship, target).available;
+            if (apAfter >= 1 && (weaponsAvailable > 0 || apAfter >= 2)) {
+                return overcharge;
+            }
+        }
+
+        return null;
     }
 
     // Reset for new game
@@ -389,6 +784,21 @@ class TurnManager {
         this.initiativeQueue = [];
         this.currentShipIndex = 0;
         this.phase = 'initiative';
+    }
+
+    removeShipFromQueue(shipId) {
+        const index = this.initiativeQueue.findIndex(ship => ship.id === shipId);
+        if (index === -1) {
+            return;
+        }
+
+        this.initiativeQueue.splice(index, 1);
+
+        if (index < this.currentShipIndex) {
+            this.currentShipIndex = Math.max(0, this.currentShipIndex - 1);
+        } else if (this.currentShipIndex >= this.initiativeQueue.length) {
+            this.currentShipIndex = Math.max(0, this.initiativeQueue.length - 1);
+        }
     }
 }
 

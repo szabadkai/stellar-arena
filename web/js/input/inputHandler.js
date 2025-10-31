@@ -17,6 +17,7 @@ class InputHandler {
         this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
         this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
         this.canvas.addEventListener('click', (e) => this.onClick(e));
+        this.canvas.addEventListener('mouseleave', () => this.onMouseLeave());
 
         // Keyboard events
         document.addEventListener('keydown', (e) => this.onKeyDown(e));
@@ -33,6 +34,7 @@ class InputHandler {
         // Update hovered hex
         const hex = this.game.renderer.pixelToHex(this.mousePos.x, this.mousePos.y);
         this.game.renderer.setHoveredHex(hex);
+        this.game.renderer.updateEdgeScroll(this.mousePos.x, this.mousePos.y);
     }
 
     onMouseDown(e) {
@@ -41,6 +43,10 @@ class InputHandler {
 
     onMouseUp(e) {
         this.isMouseDown = false;
+    }
+
+    onMouseLeave() {
+        this.game.renderer.resetEdgeScroll();
     }
 
     onClick(e) {

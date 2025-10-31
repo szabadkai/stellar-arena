@@ -9,6 +9,8 @@ class App {
         this.sound = new SoundSystem();
         this.menuManager = new MenuManager(this.campaign, this.progression, this.sound, this.modal);
         this.game = null;
+        this._postBattleTimer = null;
+        this.lastBattleSummary = null;
 
         // Initialize sound on first user interaction
         document.addEventListener('click', () => {
@@ -35,13 +37,15 @@ class App {
 
         // Clear combat log for new battle
         this.combatLog.clear();
+        this.lastBattleSummary = null;
 
         // Setup battle with fleets
         this.game.setupGame(playerFleet, enemyFleet);
     }
 
-    onBattleEnd(victory, playerShips, enemyShips) {
+    onBattleEnd(victory, playerShips, enemyShips, battleSummary = null) {
         console.log('Battle ended. Victory:', victory);
+        this.lastBattleSummary = battleSummary;
 
         // Play victory/defeat sound
         if (victory) {
@@ -56,9 +60,23 @@ class App {
         }
 
         // Show post-battle screen after a delay
-        setTimeout(() => {
-            this.menuManager.showPostBattle(victory);
+        if (this._postBattleTimer) {
+            clearTimeout(this._postBattleTimer);
+        }
+
+        this._postBattleTimer = setTimeout(() => {
+            this.menuManager.showPostBattle(victory, this.lastBattleSummary);
+            this._postBattleTimer = null;
         }, 2000);
+    }
+
+    showPostBattleImmediately(victory) {
+        if (this._postBattleTimer) {
+            clearTimeout(this._postBattleTimer);
+            this._postBattleTimer = null;
+        }
+
+        this.menuManager.showPostBattle(victory, this.lastBattleSummary);
     }
 }
 
