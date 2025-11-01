@@ -22,6 +22,56 @@ class CampaignManager {
         this.reset();
         this.isActive = true;
         this.battleNumber = 1;
+
+        // Reset progression (clear credits and ships for fresh start)
+        this.progression.reset();
+
+        // Give starting credits (enough to buy 2-3 ships)
+        this.progression.credits = 1000;
+        this.progression.saveProgress();
+
+        // Ensure basic hulls are always unlocked
+        this.ensureBasicUnlocks();
+    }
+
+    seedStarterShips() {
+        // Give player two starter ships: interceptor and corvette
+        const starterShips = [
+            {
+                shipClass: 'interceptor',
+                hull: SHIP_PRESETS.interceptor.maxHull,
+                maxHull: SHIP_PRESETS.interceptor.maxHull,
+                upgrades: [],
+                _ownedIndex: 0
+            },
+            {
+                shipClass: 'corvette',
+                hull: SHIP_PRESETS.corvette.maxHull,
+                maxHull: SHIP_PRESETS.corvette.maxHull,
+                upgrades: [],
+                _ownedIndex: 1
+            }
+        ];
+
+        this.progression.ownedShips = starterShips;
+        this.progression.saveProgress();
+    }
+
+    ensureBasicUnlocks() {
+        // Ensure interceptor, corvette, and destroyer are always unlocked
+        const basicHulls = ['interceptor', 'corvette', 'destroyer'];
+        let changed = false;
+
+        basicHulls.forEach(hull => {
+            if (!this.progression.unlockedShips.includes(hull)) {
+                this.progression.unlockedShips.push(hull);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            this.progression.saveProgress();
+        }
     }
 
     loadCampaign() {
@@ -87,11 +137,18 @@ class CampaignManager {
         this.selectedFleet = playerShips;
 
         // Sync ship damage and upgrades back to owned ships in progression
+        // Use _ownedIndex for reliable mapping when available
         playerShips.forEach(ship => {
-            const ownedIndex = this.progression.ownedShips.findIndex(
-                owned => owned.shipClass === ship.shipClass
-            );
-            if (ownedIndex !== -1) {
+            let ownedIndex = ship._ownedIndex;
+
+            // Fallback if _ownedIndex not set
+            if (typeof ownedIndex !== 'number' || ownedIndex < 0) {
+                ownedIndex = this.progression.ownedShips.findIndex(
+                    owned => owned.shipClass === ship.shipClass
+                );
+            }
+
+            if (ownedIndex !== -1 && ownedIndex < this.progression.ownedShips.length) {
                 this.progression.ownedShips[ownedIndex].hull = ship.hull;
                 this.progression.ownedShips[ownedIndex].maxHull = ship.maxHull;
                 this.progression.ownedShips[ownedIndex].upgrades = ship.upgrades || [];

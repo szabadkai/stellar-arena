@@ -175,6 +175,56 @@ input[type="range"]::-moz-range-thumb {
     font-size: 14px;
 }
 
+#upgrade-display {
+    background: #151923;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+#upgrade-display h4 {
+    color: #ffaa00;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#upgrade-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.upgrade-item {
+    background: #0d1117;
+    border: 1px solid #2a3f5f;
+    color: #ffcc66;
+    padding: 6px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: monospace;
+    line-height: 1.3;
+    cursor: help;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upgrade-item:hover {
+    background: #1a1f2e;
+    border-color: #ffaa00;
+    transform: translateX(2px);
+}
+
+.upgrade-empty {
+    font-size: 11px;
+    color: #4a5568;
+    padding: 6px;
+    font-style: italic;
+    text-align: center;
+}
+
 #ability-buttons {
     display: flex;
     flex-direction: column;
@@ -829,20 +879,20 @@ button:disabled {
 
 .shipyard-content h2 {
     color: #4a9eff;
-    font-size: 48px;
+    font-size: 32px;
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .campaign-info {
     display: flex;
     justify-content: center;
-    gap: 40px;
-    margin-bottom: 40px;
+    gap: 30px;
+    margin-bottom: 20px;
 }
 
 .campaign-info .stat {
-    font-size: 20px;
+    font-size: 16px;
     color: #a0a0a0;
 }
 
@@ -867,29 +917,29 @@ button:disabled {
 
 #available-ships h3 {
     color: #6ab9ff;
-    font-size: 28px;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
+    font-size: 20px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
     border-bottom: 2px solid #2a3f5f;
     text-align: left;
 }
 
 #ship-selection {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
     align-items: start;
 }
 
 .ship-card {
     background: #1a1f2e;
     border: 2px solid #2a3f5f;
-    border-radius: 10px;
-    padding: 24px;
+    border-radius: 8px;
+    padding: 16px;
     transition: all 0.3s;
     display: flex;
     flex-direction: column;
-    min-height: 420px;
+    min-height: 260px;
 }
 
 .ship-card:hover {
@@ -905,15 +955,15 @@ button:disabled {
 
 .ship-card h4 {
     color: #4a9eff;
-    font-size: 22px;
-    margin-bottom: 8px;
+    font-size: 16px;
+    margin-bottom: 4px;
     text-align: center;
 }
 
 .ship-card .ship-class {
     color: #a0a0a0;
-    font-size: 13px;
-    margin-bottom: 16px;
+    font-size: 11px;
+    margin-bottom: 10px;
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -925,10 +975,10 @@ button:disabled {
     align-items: center;
     background: #0a0e1a;
     border: 1px solid #2a3f5f;
-    border-radius: 5px;
-    padding: 20px;
-    margin-bottom: 15px;
-    min-height: 80px;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 10px;
+    min-height: 60px;
 }
 
 .ship-illustration canvas {
@@ -941,10 +991,10 @@ button:disabled {
 .ship-card .ship-stats {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    font-size: 13px;
+    gap: 6px;
+    font-size: 11px;
     margin-top: auto;
-    padding-top: 16px;
+    padding-top: 10px;
     border-top: 1px solid #2a3f5f;
 }
 
@@ -1187,27 +1237,179 @@ button:disabled {
 }
 
 .tutorial-section ul {
-    list-style: none;
-    padding-left: 0;
+    list-style: disc outside;
+    padding-left: 24px;
+    margin-left: 0;
 }
 
 .tutorial-section li {
     color: #e0e0e0;
     margin-bottom: 8px;
-    padding-left: 20px;
-    position: relative;
+    padding-left: 4px;
     line-height: 1.6;
 }
 
-.tutorial-section li:before {
-    content: '▸';
-    position: absolute;
-    left: 0;
+.tutorial-section li::marker {
     color: #4a9eff;
 }
 
 .tutorial-section strong {
     color: #ffaa00;
+}
+
+/* Abilities Guide */
+#abilities-guide-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ability-guide-card {
+    background: #1a1f2e;
+    border: 2px solid #2a3f5f;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.3s;
+}
+
+.ability-guide-card:hover {
+    border-color: #4a9eff;
+    transform: translateY(-2px);
+}
+
+.ability-guide-card .ability-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.ability-guide-card .ability-icon {
+    font-size: 32px;
+}
+
+.ability-guide-card .ability-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #6ab9ff;
+}
+
+.ability-guide-card .ability-description {
+    color: #e0e0e0;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.ability-guide-card .ability-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #2a3f5f;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.ability-guide-card .ability-stat {
+    color: #a0a0a0;
+}
+
+.ability-guide-card .ability-stat .label {
+    color: #6ab9ff;
+}
+
+/* Custom Ability Tooltip */
+.ability-tooltip {
+    position: fixed;
+    background: #1a1f2e;
+    border: 2px solid #4a9eff;
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 280px;
+    max-width: 400px;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.ability-tooltip .tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #2a3f5f;
+}
+
+.ability-tooltip .tooltip-icon {
+    font-size: 24px;
+}
+
+.ability-tooltip .tooltip-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #6ab9ff;
+}
+
+.ability-tooltip .tooltip-description {
+    color: #e0e0e0;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    font-size: 13px;
+}
+
+.ability-tooltip .tooltip-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 0;
+    border-top: 1px solid #2a3f5f;
+    border-bottom: 1px solid #2a3f5f;
+    margin-bottom: 10px;
+}
+
+.ability-tooltip .tooltip-stat {
+    font-size: 12px;
+    font-family: monospace;
+    color: #a0a0a0;
+}
+
+.ability-tooltip .tooltip-stat .label {
+    color: #6ab9ff;
+    font-weight: bold;
+}
+
+.ability-tooltip .tooltip-status {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.ability-tooltip .tooltip-status.ready {
+    background: rgba(68, 255, 68, 0.2);
+    color: #44ff44;
+    border: 1px solid #44ff44;
+}
+
+.ability-tooltip .tooltip-status.cooldown {
+    background: rgba(74, 158, 255, 0.2);
+    color: #6ab9ff;
+    border: 1px solid #6ab9ff;
+}
+
+.ability-tooltip .tooltip-status.insufficient {
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffaa00;
+    border: 1px solid #ffaa00;
+}
+
+.ability-tooltip .tooltip-status.unavailable {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    border: 1px solid #ff4444;
 }
 
 #close-tutorial-btn {

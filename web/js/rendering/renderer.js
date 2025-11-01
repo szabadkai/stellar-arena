@@ -39,6 +39,7 @@ class Renderer {
         this.hoveredHex = null;
         this.reachableHexes = [];
         this.selectedWeapon = null;
+        this.abilityPreviewHexes = null;
         this.driftPaths = new Map(); // Ship ID -> predicted drift path
         this.damageIndicators = [];
         this.obstacleRotations = new Map();
@@ -94,6 +95,11 @@ class Renderer {
         if (this.selectedShip && this.selectedWeapon) {
             this.drawWeaponRange(this.selectedShip, this.selectedWeapon);
             this.highlightValidTargets();
+        }
+
+        // Draw ability preview hexes
+        if (this.abilityPreviewHexes && this.abilityPreviewHexes.length > 0) {
+            this.drawAbilityPreview();
         }
 
         // Draw hover highlight
@@ -268,6 +274,13 @@ class Renderer {
         this.reachableHexes.forEach(({ hex, cost }) => {
             const alpha = 1 - (cost / 10);
             this.drawHex(hex, `rgba(74, 158, 255, ${0.2 * alpha})`, null);
+        });
+    }
+
+    drawAbilityPreview() {
+        // Draw ability preview with a distinct color
+        this.abilityPreviewHexes.forEach(hex => {
+            this.drawHex(hex, 'rgba(106, 185, 255, 0.25)', 'rgba(106, 185, 255, 0.6)');
         });
     }
 
@@ -712,6 +725,10 @@ class Renderer {
 
     setSelectedWeapon(weapon) {
         this.selectedWeapon = weapon;
+    }
+
+    setAbilityPreview(affectedHexes) {
+        this.abilityPreviewHexes = affectedHexes;
     }
 
     // Check if a ship can be targeted with the selected weapon

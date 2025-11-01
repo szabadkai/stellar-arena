@@ -20,7 +20,84 @@ class App {
         // Make app globally available
         window.app = this;
 
+        // Setup abilities guide
+        this.setupAbilitiesGuide();
+
         console.log('Stellar Arena initialized');
+    }
+
+    setupAbilitiesGuide() {
+        const guideBtn = document.getElementById('abilities-guide-btn');
+        const overlay = document.getElementById('abilities-guide-overlay');
+        const closeBtn = document.getElementById('close-abilities-guide-btn');
+        const content = document.getElementById('abilities-guide-content');
+
+        guideBtn.addEventListener('click', () => {
+            this.populateAbilitiesGuide(content);
+            overlay.style.display = 'flex';
+        });
+
+        closeBtn.addEventListener('click', () => {
+            overlay.style.display = 'none';
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.style.display = 'none';
+            }
+        });
+    }
+
+    populateAbilitiesGuide(container) {
+        container.innerHTML = '';
+
+        // Get all abilities from ABILITY_LIBRARY
+        const abilities = window.ABILITY_LIBRARY || {};
+
+        Object.entries(abilities).forEach(([key, abilityFactory]) => {
+            const ability = abilityFactory();
+
+            const card = document.createElement('div');
+            card.className = 'ability-guide-card';
+
+            const header = document.createElement('div');
+            header.className = 'ability-header';
+
+            const icon = document.createElement('div');
+            icon.className = 'ability-icon';
+            icon.textContent = ability.icon || '⚡';
+
+            const name = document.createElement('div');
+            name.className = 'ability-name';
+            name.textContent = ability.name;
+
+            header.appendChild(icon);
+            header.appendChild(name);
+
+            const description = document.createElement('div');
+            description.className = 'ability-description';
+            description.textContent = ability.description;
+
+            const stats = document.createElement('div');
+            stats.className = 'ability-stats';
+
+            const rangeDesc = typeof ability.getRangeDescription === 'function'
+                ? ability.getRangeDescription()
+                : 'N/A';
+
+            stats.innerHTML = `
+                <div class="ability-stat"><span class="label">⚡</span> ${ability.energyCost} Energy</div>
+                <div class="ability-stat"><span class="label">⏱</span> ${ability.apCost} AP</div>
+                <div class="ability-stat"><span class="label">❄️</span> ${ability.cooldown} turn cooldown</div>
+                <div class="ability-stat"><span class="label">📏</span> ${rangeDesc}</div>
+            `;
+
+            card.appendChild(header);
+            card.appendChild(description);
+            card.appendChild(stats);
+
+            container.appendChild(card);
+        });
     }
 
     startBattle() {

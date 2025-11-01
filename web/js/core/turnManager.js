@@ -41,6 +41,9 @@ class TurnManager {
     nextTurn() {
         console.log(`nextTurn() called. Current index: ${this.currentShipIndex}, Queue length: ${this.initiativeQueue.length}`);
 
+        // Purge destroyed ships from the queue before advancing
+        this.purgeDestroyedShips();
+
         // End current ship's turn if any
         if (this.currentShipIndex < this.initiativeQueue.length) {
             const currentShip = this.initiativeQueue[this.currentShipIndex];
@@ -73,6 +76,20 @@ class TurnManager {
             nextShip.startTurn();
             this.phase = 'action';
             console.log(`Started turn for ${nextShip.name}, phase: ${this.phase}`);
+        }
+    }
+
+    // Purge destroyed or missing ships from initiative queue
+    purgeDestroyedShips() {
+        const beforeLength = this.initiativeQueue.length;
+        this.initiativeQueue = this.initiativeQueue.filter(ship => ship && !ship.isDestroyed);
+
+        if (this.initiativeQueue.length < beforeLength) {
+            console.log(`Purged ${beforeLength - this.initiativeQueue.length} destroyed ships from initiative queue`);
+            // Adjust current index if needed
+            if (this.currentShipIndex >= this.initiativeQueue.length) {
+                this.currentShipIndex = Math.max(0, this.initiativeQueue.length - 1);
+            }
         }
     }
 
@@ -376,6 +393,14 @@ class TurnManager {
                         }
                         renderer.addExplosion(attackTarget.position);
                         this.grid.removeShip(attackTarget.position);
+
+                        // Remove from initiative queue and deselect in UI
+                        this.removeShipFromQueue(attackTarget.id);
+                        if (gameInstance && gameInstance.selectedShip && gameInstance.selectedShip.id === attackTarget.id) {
+                            gameInstance.selectedShip = null;
+                            gameInstance.hud.update();
+                        }
+
                         if (gameInstance?.hud) {
                             gameInstance.hud.showMessage(`${attackTarget.name} destroyed!`, 'error', 2500);
                         }

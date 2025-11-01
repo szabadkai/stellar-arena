@@ -202,11 +202,13 @@ class UpgradeManager {
         if (upgrade) {
             upgrade.apply(ship);
 
-            // Track applied upgrades on ship
+            // Track applied upgrades on ship (avoid duplicates)
             if (!ship.upgrades) {
                 ship.upgrades = [];
             }
-            ship.upgrades.push(upgradeKey);
+            if (!ship.upgrades.includes(upgradeKey)) {
+                ship.upgrades.push(upgradeKey);
+            }
 
             return true;
         }

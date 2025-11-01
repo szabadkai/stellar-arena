@@ -26,11 +26,14 @@ class HUD {
 
         this.weaponButtons = document.getElementById('weapon-buttons');
         this.abilityButtons = document.getElementById('ability-buttons');
+        this.upgradeList = document.getElementById('upgrade-list');
         this.queueList = document.getElementById('queue-list');
+        this.abilityTooltip = document.getElementById('ability-tooltip');
 
         // Track which ship we last updated weapons for
         this.lastWeaponUpdateShipId = null;
         this.lastAbilityUpdateShipId = null;
+        this.lastUpgradeUpdateShipId = null;
 
         // Setup event listeners
         this.setupEventListeners();
@@ -107,6 +110,13 @@ class HUD {
             this.updateAbilityButtons(ship);
         } else {
             this.updateAbilityButtonStates(ship);
+        }
+
+        // Upgrades - update if ship changed
+        const upgradeKey = `${ship.id}_${(ship.upgrades || []).length}`;
+        if (this.lastUpgradeUpdateShipId !== upgradeKey) {
+            this.lastUpgradeUpdateShipId = upgradeKey;
+            this.updateUpgradeDisplay(ship);
         }
     }
 
@@ -321,15 +331,45 @@ class HUD {
             button.classList.toggle('disabled', !canUse);
             button.disabled = !canUse;
 
-            if (!hasEnergy) {
-                button.title = `${ability.description}\nRequires ${ability.energyCost} energy`;
+            // Enhanced tooltip with range, costs, cooldown, and readiness
+            const rangeDesc = typeof ability.getRangeDescription === 'function'
+                ? ability.getRangeDescription()
+                : 'N/A';
+
+            let tooltip = `${ability.description}\n\n`;
+            tooltip += `📏 Range: ${rangeDesc}\n`;
+            tooltip += `⚡ Energy: ${ability.energyCost}\n`;
+            tooltip += `⏱ AP Cost: ${ability.apCost}\n`;
+            tooltip += `❄️ Cooldown: ${ability.cooldown} turn${ability.cooldown === 1 ? '' : 's'}\n\n`;
+
+            if (!ready) {
+                tooltip += `⏳ Status: Cooling down (${ability.cooldownRemaining} turn${ability.cooldownRemaining === 1 ? '' : 's'} remaining)`;
+            } else if (!hasEnergy) {
+                tooltip += `⚠️ Status: Insufficient energy (need ${ability.energyCost})`;
             } else if (!hasAP) {
-                button.title = `${ability.description}\nRequires ${ability.apCost} AP`;
-            } else if (!ready) {
-                button.title = `${ability.description}\nCooling down (${ability.cooldownRemaining} turn${ability.cooldownRemaining === 1 ? '' : 's'})`;
+                tooltip += `⚠️ Status: Insufficient AP (need ${ability.apCost})`;
+            } else if (canUse) {
+                tooltip += `✅ Status: Ready to use`;
             } else {
-                button.title = ability.description;
+                tooltip += `❌ Status: Not your turn`;
             }
+
+            // Add custom tooltip on hover
+            button.addEventListener('mouseenter', (e) => {
+                this.showAbilityTooltip(e, ability, ship, hasEnergy, hasAP, ready, canUse);
+                if (typeof ability.getPreview === 'function') {
+                    this.game.showAbilityPreview(ability, ship);
+                }
+            });
+
+            button.addEventListener('mouseleave', () => {
+                this.hideAbilityTooltip();
+                this.game.clearAbilityPreview();
+            });
+
+            button.addEventListener('mousemove', (e) => {
+                this.updateTooltipPosition(e);
+            });
         });
     }
 
@@ -419,6 +459,109 @@ class HUD {
 
     showDamage(ship, damage) {
         this.showMessage(`${ship.name} took ${Math.floor(damage)} damage!`, 'warning', 2000);
+    }
+
+    updateUpgradeDisplay(ship) {
+        if (!this.upgradeList) return;
+
+        this.upgradeList.innerHTML = '';
+
+        if (!ship.upgrades || ship.upgrades.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'upgrade-empty';
+            emptyState.textContent = 'No upgrades';
+            this.upgradeList.appendChild(emptyState);
+            return;
+        }
+
+        ship.upgrades.forEach(upgradeKey => {
+            const upgrade = window.UPGRADE_POOL ? window.UPGRADE_POOL[upgradeKey] : null;
+            if (!upgrade) return;
+
+            const item = document.createElement('div');
+            item.className = 'upgrade-item';
+
+            // Create detailed tooltip
+            const tooltip = `${upgrade.icon || '⚙️'} ${upgrade.name}\n\n${upgrade.description}\n\nType: ${upgrade.type}`;
+            item.title = tooltip;
+
+            // Just show icon and truncated name
+            item.textContent = `${upgrade.icon || '⚙️'} ${upgrade.name}`;
+
+            this.upgradeList.appendChild(item);
+        });
+    }
+
+    showAbilityTooltip(event, ability, ship, hasEnergy, hasAP, ready, canUse) {
+        if (!this.abilityTooltip) return;
+
+        const rangeDesc = typeof ability.getRangeDescription === 'function'
+            ? ability.getRangeDescription()
+            : 'N/A';
+
+        // Determine status
+        let statusText = '';
+        let statusClass = '';
+        if (!ready) {
+            statusText = `⏳ Cooling down (${ability.cooldownRemaining} turn${ability.cooldownRemaining === 1 ? '' : 's'} remaining)`;
+            statusClass = 'cooldown';
+        } else if (!hasEnergy) {
+            statusText = `⚠️ Insufficient energy (need ${ability.energyCost})`;
+            statusClass = 'insufficient';
+        } else if (!hasAP) {
+            statusText = `⚠️ Insufficient AP (need ${ability.apCost})`;
+            statusClass = 'insufficient';
+        } else if (canUse) {
+            statusText = `✅ Ready to use`;
+            statusClass = 'ready';
+        } else {
+            statusText = `❌ Not your turn`;
+            statusClass = 'unavailable';
+        }
+
+        this.abilityTooltip.innerHTML = `
+            <div class="tooltip-header">
+                <div class="tooltip-icon">${ability.icon || '⚡'}</div>
+                <div class="tooltip-name">${ability.name}</div>
+            </div>
+            <div class="tooltip-description">${ability.description}</div>
+            <div class="tooltip-stats">
+                <div class="tooltip-stat"><span class="label">⚡</span> ${ability.energyCost} Energy</div>
+                <div class="tooltip-stat"><span class="label">⏱</span> ${ability.apCost} AP</div>
+                <div class="tooltip-stat"><span class="label">❄️</span> ${ability.cooldown} turn${ability.cooldown === 1 ? '' : 's'}</div>
+                <div class="tooltip-stat"><span class="label">📏</span> ${rangeDesc}</div>
+            </div>
+            <div class="tooltip-status ${statusClass}">${statusText}</div>
+        `;
+
+        this.abilityTooltip.style.display = 'block';
+        this.updateTooltipPosition(event);
+    }
+
+    hideAbilityTooltip() {
+        if (this.abilityTooltip) {
+            this.abilityTooltip.style.display = 'none';
+        }
+    }
+
+    updateTooltipPosition(event) {
+        if (!this.abilityTooltip || this.abilityTooltip.style.display === 'none') return;
+
+        const padding = 15;
+        let x = event.clientX + padding;
+        let y = event.clientY + padding;
+
+        // Keep tooltip on screen
+        const rect = this.abilityTooltip.getBoundingClientRect();
+        if (x + rect.width > window.innerWidth) {
+            x = event.clientX - rect.width - padding;
+        }
+        if (y + rect.height > window.innerHeight) {
+            y = event.clientY - rect.height - padding;
+        }
+
+        this.abilityTooltip.style.left = x + 'px';
+        this.abilityTooltip.style.top = y + 'px';
     }
 }
 

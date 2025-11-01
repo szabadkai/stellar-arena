@@ -514,6 +514,8 @@ const ABILITY_LIBRARY = {
         cooldown: 3,
         cooldownRemaining: 0,
         icon: '🛡',
+        getRangeDescription() { return 'Self'; },
+        getPreview(ship, grid) { return [ship.position]; },
         activate({ ship, game }) {
             const amount = Math.floor(ship.maxShield * 0.35);
             ship.shield = Math.min(ship.maxShield, ship.shield + amount);
@@ -535,6 +537,8 @@ const ABILITY_LIBRARY = {
         cooldown: 2,
         cooldownRemaining: 0,
         icon: '🌀',
+        getRangeDescription() { return 'Self'; },
+        getPreview(ship, grid) { return [ship.position]; },
         activate({ ship, game }) {
             ship.statusEffects.evasiveCharges = Math.min(ship.statusEffects.evasiveCharges + 1, 2);
             ship.velocity.q *= 0.6;
@@ -557,6 +561,8 @@ const ABILITY_LIBRARY = {
         cooldown: 3,
         cooldownRemaining: 0,
         icon: '⚡',
+        getRangeDescription() { return 'Self'; },
+        getPreview(ship, grid) { return [ship.position]; },
         activate({ ship, game }) {
             ship.statusEffects.overchargeShots = Math.min(ship.statusEffects.overchargeShots + 1, 2);
             if (game?.renderer) {
@@ -577,6 +583,11 @@ const ABILITY_LIBRARY = {
         cooldown: 3,
         cooldownRemaining: 0,
         icon: '💨',
+        getRangeDescription() { return 'Adjacent hexes'; },
+        getPreview(ship, grid) {
+            if (!grid) return [];
+            return ship.position.neighbors().filter(hex => grid.isValidHex(hex) && !grid.isBlocked(hex));
+        },
         activate({ ship, game }) {
             const grid = game?.grid || window.app?.game?.grid;
             if (!grid) return;
@@ -629,6 +640,21 @@ const ABILITY_LIBRARY = {
         cooldown: 9999,
         cooldownRemaining: 0,
         icon: '💥',
+        getRangeDescription() { return '3 hex radius'; },
+        getPreview(ship, grid) {
+            if (!grid) return [];
+            const radius = 3 + (ship.empBurstRadiusBonus || 0);
+            const affected = [];
+            for (let q = -radius; q <= radius; q++) {
+                for (let r = -radius; r <= radius; r++) {
+                    const hex = new HexCoord(ship.position.q + q, ship.position.r + r);
+                    if (ship.position.distance(hex) <= radius && grid.isValidHex(hex)) {
+                        affected.push(hex);
+                    }
+                }
+            }
+            return affected;
+        },
         activate({ ship, game }) {
             if (ship._empUsed) {
                 return;

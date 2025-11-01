@@ -16,6 +16,9 @@ class ProgressionSystem {
             this.unlockedWeapons = data.unlockedWeapons || [];
             this.campaignsCompleted = data.campaignsCompleted || 0;
             this.totalVictories = data.totalVictories || 0;
+
+            // Defensive: ensure basic hulls are always unlocked
+            this.ensureBasicUnlocks();
         } else {
             // Default starting progress
             this.credits = 500;
@@ -24,6 +27,20 @@ class ProgressionSystem {
             this.unlockedWeapons = [];
             this.campaignsCompleted = 0;
             this.totalVictories = 0;
+        }
+    }
+
+    ensureBasicUnlocks() {
+        // Fallback protection: ensure interceptor, corvette, destroyer are always unlocked
+        const basicHulls = ['interceptor', 'corvette', 'destroyer'];
+        if (!this.unlockedShips || this.unlockedShips.length === 0) {
+            this.unlockedShips = [...basicHulls];
+        } else {
+            basicHulls.forEach(hull => {
+                if (!this.unlockedShips.includes(hull)) {
+                    this.unlockedShips.push(hull);
+                }
+            });
         }
     }
 

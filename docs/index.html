@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stellar Arena - Web Edition</title>
     <link rel="icon" type="image/svg+xml" href="/stellar-arena/assets/favicon-DHtxF5nM.svg">
-  <script type="module" crossorigin src="/stellar-arena/assets/index-BudG1uJQ.js"></script>
-  <link rel="stylesheet" crossorigin href="/stellar-arena/assets/index-D19MAqDX.css">
+  <script type="module" crossorigin src="/stellar-arena/assets/index-UThylMg2.js"></script>
+  <link rel="stylesheet" crossorigin href="/stellar-arena/assets/index-CdtydU92.css">
 </head>
 <body>
     <!-- Main Menu Screen -->
@@ -17,6 +17,7 @@
                 <button id="new-campaign-btn" class="menu-btn">New Campaign</button>
                 <button id="continue-btn" class="menu-btn" disabled>Continue</button>
                 <button id="unlocks-btn" class="menu-btn">Unlocks</button>
+                <button id="abilities-guide-btn" class="menu-btn">Abilities Guide</button>
             </div>
             <div class="version">v0.1.0 Alpha</div>
         </div>
@@ -92,6 +93,10 @@
                         <h4>Abilities <span class="hud-hint">(press Q/E)</span></h4>
                         <div id="ability-buttons"></div>
                     </div>
+                    <div id="upgrade-display">
+                        <h4>Upgrades</h4>
+                        <div id="upgrade-list"></div>
+                    </div>
                 </div>
             </div>
             <div id="initiative-queue">
@@ -105,6 +110,9 @@
             <button id="reset-btn">Reset Game</button>
         </div>
         <div id="message-container"></div>
+
+        <!-- Custom Ability Tooltip -->
+        <div id="ability-tooltip" class="ability-tooltip" style="display: none;"></div>
 
         <!-- Combat Log -->
         <div id="combat-log" class="combat-log collapsed">
@@ -225,6 +233,15 @@
                 <input type="checkbox" id="dont-show-tutorial">
                 <span>Don't show this again</span>
             </label>
+        </div>
+    </div>
+
+    <!-- Abilities Guide Overlay -->
+    <div id="abilities-guide-overlay" class="tutorial-overlay" style="display: none;">
+        <div class="tutorial-content" style="max-width: 800px;">
+            <h2>⚡ Ship Abilities Reference</h2>
+            <div id="abilities-guide-content"></div>
+            <button id="close-abilities-guide-btn" class="action-btn">Close</button>
         </div>
     </div>
 

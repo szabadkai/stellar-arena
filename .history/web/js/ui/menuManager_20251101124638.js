@@ -79,28 +79,9 @@ class MenuManager {
         document.getElementById('continue-btn').disabled = !hasSave;
     }
 
-    async startNewCampaign() {
-        // Check if there's existing progress
-        const hasSave = this.campaign.loadCampaign();
-
-        if (hasSave) {
-            // Warn user about losing progress
-            let confirmed = false;
-            if (this.modal) {
-                confirmed = await this.modal.confirm(
-                    'Start New Campaign?',
-                    'Starting a new campaign will reset all your ships, credits, and progress. Continue?'
-                );
-            } else {
-                confirmed = confirm('Starting a new campaign will reset all your ships, credits, and progress. Continue?');
-            }
-
-            if (!confirmed) {
-                return;
-            }
-        }
-
+    startNewCampaign() {
         this.campaign.startNewCampaign();
+        this.progression.setNewCampaignState();
         this.showShipyard();
     }
 
@@ -138,8 +119,18 @@ class MenuManager {
             container.appendChild(fleetHeader);
 
             ownedShips.forEach((ownedShip, index) => {
-                const preset = SHIP_PRESETS[ownedShip.shipClass];
-                if (!preset) return;
+                let preset = SHIP_PRESETS[ownedShip.shipClass];
+                if (!preset) {
+                    const fallback = SHIP_PRESETS.interceptor;
+                    if (!fallback) return;
+                    ownedShip = {
+                        ...ownedShip,
+                        shipClass: 'interceptor',
+                        hull: fallback.maxHull,
+                        maxHull: fallback.maxHull
+                    };
+                    preset = fallback;
+                }
 
                 const tempShip = new Ship({
                     ...preset,
@@ -167,29 +158,35 @@ class MenuManager {
         const shopHeader = document.createElement('h3');
         shopHeader.textContent = '🛒 Ship Shop';
         shopHeader.style.gridColumn = '1 / -1'; // Span all columns
-        shopHeader.style.marginTop = ownedShips && ownedShips.length > 0 ? '40px' : '0';
+        shopHeader.style.marginTop = ownedShips && ownedShips.length > 0 ? '20px' : '0';
         container.appendChild(shopHeader);
 
         // Empty state for shop
-        const availableTypes = this.progression.unlockedShips;
+        const availableTypes = this.progression.unlockedShips && this.progression.unlockedShips.length > 0
+            ? this.progression.unlockedShips
+            : Object.keys(SHIP_PRESETS);
+
         if (!ownedShips || ownedShips.length === 0) {
             const emptyState = document.createElement('div');
             emptyState.style.gridColumn = '1 / -1';
-            emptyState.style.padding = '40px';
+            emptyState.style.padding = '20px';
             emptyState.style.textAlign = 'center';
             emptyState.style.color = '#6ab9ff';
-            emptyState.style.fontSize = '18px';
+            emptyState.style.fontSize = '16px';
             emptyState.style.background = '#151923';
             emptyState.style.borderRadius = '10px';
             emptyState.style.border = '2px dashed #2a3f5f';
-            emptyState.style.marginBottom = '30px';
-            emptyState.innerHTML = '💫 <strong>Welcome, Commander!</strong><br><br>Build your fleet from the ships below.<br>You need at least one ship to launch into battle.';
+            emptyState.style.marginBottom = '16px';
+            emptyState.innerHTML = '💫 <strong>Welcome, Commander!</strong><br><br>Purchase your first ship below to begin your campaign.';
             container.appendChild(emptyState);
         }
 
         availableTypes.forEach(shipType => {
             const preset = SHIP_PRESETS[shipType];
-            if (!preset) return;
+            if (!preset) {
+                console.warn('Unknown ship preset:', shipType);
+                return;
+            }
 
             const shopCard = this.createShopCard(shipType, preset);
             container.appendChild(shopCard);
@@ -278,6 +275,11 @@ class MenuManager {
         // Create a container div for the sprite
         const spriteContainer = document.createElement('div');
         spriteContainer.className = 'ship-illustration';
+        if (spriteCanvas && spriteCanvas.style) {
+            spriteCanvas.style.maxWidth = '120px';
+            spriteCanvas.style.maxHeight = '80px';
+            spriteCanvas.style.display = 'block';
+        }
         spriteContainer.appendChild(spriteCanvas);
 
         card.innerHTML = `
@@ -322,7 +324,6 @@ class MenuManager {
     launchBattle() {
         // Create fleet from all owned ships
         const ownedShips = this.progression.ownedShips;
-        console.log('Loading fleet from progression:', ownedShips.map(s => ({ class: s.shipClass, upgrades: s.upgrades })));
 
         if (!ownedShips || ownedShips.length === 0) {
             if (this.modal) {
@@ -343,19 +344,13 @@ class MenuManager {
                 maxHull: ownedShip.maxHull,
                 upgrades: ownedShip.upgrades || []
             });
-
-            // Store the owned index for reliable sync back after battle
             ship._ownedIndex = index;
 
             // Re-apply saved upgrades to ensure stats are correct in battle
             if (ownedShip.upgrades && ownedShip.upgrades.length > 0) {
-                console.log(`Applying ${ownedShip.upgrades.length} upgrades to ${ship.name}:`, ownedShip.upgrades);
                 ownedShip.upgrades.forEach(upgradeKey => {
                     this.upgradeManager.applyUpgrade(ship, upgradeKey);
                 });
-                console.log(`Ship ${ship.name} after upgrades - Hull: ${ship.maxHull}, Upgrades:`, ship.upgrades);
-            } else {
-                console.log(`No upgrades to apply for ${ship.name}`);
             }
 
             return ship;
@@ -566,26 +561,9 @@ class MenuManager {
             }
         });
 
-        // Sync upgrades back to owned ships in progression
-        fleet.forEach(ship => {
-            let ownedIndex = ship._ownedIndex;
-
-            // Fallback if _ownedIndex not set
-            if (typeof ownedIndex !== 'number' || ownedIndex < 0) {
-                ownedIndex = this.progression.ownedShips.findIndex(
-                    owned => owned.shipClass === ship.shipClass
-                );
-            }
-
-            if (ownedIndex !== -1 && ownedIndex < this.progression.ownedShips.length) {
-                this.progression.ownedShips[ownedIndex].hull = ship.hull;
-                this.progression.ownedShips[ownedIndex].maxHull = ship.maxHull;
-                this.progression.ownedShips[ownedIndex].upgrades = ship.upgrades || [];
-                console.log(`Synced upgrades for ${ship.name}:`, ship.upgrades);
-            }
-        });
-        this.progression.saveProgress();
-        console.log('Progression saved with upgrades:', this.progression.ownedShips.map(s => ({ class: s.shipClass, upgrades: s.upgrades })));
+        // Persist upgrades back to campaign + progression
+        this.campaign.syncFleetToProgression();
+        this.campaign.setFleet(fleet);
 
         // Continue with campaign
         const hasNext = this.campaign.nextBattle();

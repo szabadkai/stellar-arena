@@ -304,7 +304,20 @@ class Game {
             : this.getShipById(this.pendingBattleEvent.shipId);
 
         if (!ship) {
-            this.battleEventMessage.textContent = 'Unable to resolve event.';
+            // Surface clear error message and enable continue button
+            if (this.battleEventMessage) {
+                this.battleEventMessage.textContent = 'Unable to resolve event: ship no longer available.';
+            }
+            if (this.battleEventChoices) {
+                this.battleEventChoices.querySelectorAll('.battle-event-choice-btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                });
+            }
+            if (this.battleEventContinueBtn) {
+                this.battleEventContinueBtn.classList.remove('hidden');
+            }
+            this.pendingBattleEvent.resolved = true;
             return;
         }
 
@@ -756,7 +769,25 @@ class Game {
             }
 
             this.recordAbilityUse(ship);
+            this.clearAbilityPreview(); // Clear preview after using ability
             this.hud.update();
+        }
+    }
+
+    showAbilityPreview(ability, ship) {
+        if (!ability || !ship || !this.renderer) return;
+
+        if (typeof ability.getPreview === 'function') {
+            const affectedHexes = ability.getPreview(ship, this.grid);
+            if (affectedHexes && affectedHexes.length > 0) {
+                this.renderer.setAbilityPreview(affectedHexes);
+            }
+        }
+    }
+
+    clearAbilityPreview() {
+        if (this.renderer) {
+            this.renderer.setAbilityPreview(null);
         }
     }
 
